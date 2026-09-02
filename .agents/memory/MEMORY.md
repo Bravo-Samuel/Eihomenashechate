@@ -1,0 +1,50 @@
+- [Menashe Design System (menashe-ds)](menashe-ds.md) — extracted DS; package at artifacts/menashe-ds/; ds-entry at mockup-sandbox/src/ds/menashe-ds/; 3 themes; read AGENTS.md before authoring UI.
+- [RC1 security hardening](rc1-hardening.md) — helmet added, rate-limiter skip fixed, global error handler + JSON 404 added to app.ts; push subscribe no longer accepts caller-supplied userId.
+- [PEP-705 Feedback Center](pep705-feedback-center.md) — full support center; modal key "feedback-center"; 8 views; API at /feedback/*; DB columns added via ALTER TABLE.
+- [Chat SSE abort pattern](chat-sse-abort-pattern.md) — use res.on("close") not req.on("close") in SSE routes; express.json() closes req stream immediately after body parse.
+- [Offline service worker](offline-sw.md) — git-safe offline mode: static public/sw.js, two caches (shell + assets), no build manifests, SW registered in main.tsx on startup.
+- [Bilingual system (EN + TK)](bilingual-system.md) — all UI text must go through LanguageContext; never hardcode English-only strings
+- [Clerk API auth in apiFetch](clerk-api-auth.md) — cookies alone don't work through Replit's proxy; always attach Bearer token via window.Clerk?.session?.getToken()
+- [Clerk Preview proxy](clerk-preview-proxy.md) — Replit Preview needs a same-origin Clerk proxy with forwarded origin headers; dev opt-in must be reliable
+- [Web Preview dependency guard](web-preview-dependency-guard.md) — optional Framer Motion peer dependencies may need explicit web-artifact installation for Vite scans
+- [Clerk provisioning requirement](clerk-provisioning.md) — must call setupClerkWhitelabelAuth() before the web app can start; check status first every session
+- [hebcal-noaa ESM shim](hebcal-noaa-shim.md) — @hebcal/noaa ships pure ESM; use a pre-compiled CJS shim via Metro resolveRequest to fix production build failures
+- [Mobile metro @/ alias](mobile-metro-alias.md) — Expo SDK 54 getDefaultConfig() handles tsconfig @/* paths; do NOT add resolver.alias (breaks require.context)
+- [Mobile auth guard pattern](mobile-auth-guard.md) — never gate tabs on custom AsyncStorage keys; Clerk isSignedIn in _layout.tsx is the single auth gate
+- [Clerk web native stubs](clerk-web-native-stubs.md) — Metro resolveRequest must intercept by RESOLVED file path, not module name, when unstable_enablePackageExports is on
+- [Clerk test fixture](clerk-test-fixture.md) — Express getAuth tests need Clerk’s branded auth function and signed-in session shape
+- [r3f-perf crashes R3F canvas](r3f-perf-crash.md) — ScenePerf / r3f-perf Perf component breaks R3F reconciler every frame; never use it in MemorialValley3D
+- [Cartographer breaks R3F scene files](cartographer-r3f-fix.md) — cartographer injects data-component-name into all JSX; R3F 9.x treats hyphenated props as nested paths and throws; strip via enforce:post Vite transform
+- [Memorial Sanctuary modal architecture](memorial-sanctuary-modal.md) — all UI panels live in one large self-contained file; per-flower point lights must be removed (use emissive-only); AmbientNotification entries must use a ref to avoid stale closure; virtual flowers capped at MAX_VIRTUAL_FLOWERS=40 for FPS.
+- [Home.tsx blueprint](home-blueprint.md) — H-004.5 complete; sections/ dir at src/pages/home/sections/; CommunitySection fully self-contained; CalendarSection owns AnnouncementStrip + children for Today Card; next = H-005 types extraction.
+- [RC-002 visual consistency](rc002-visual-consistency.md) — tab icons 22/20, a10 entrance added, memorial card theme-aware, EmptyState replaces EmptyCard, PRAYER_CAT inside component, PALETTES used in settings preview.
+- [Express 5 req.params types](express5-params-types.md) — Express 5 types req.params values as string | string[]; always wrap with String() before passing to parseInt or SQL.
+- [SPR-010 security Zod schema gaps](spr010-zod-gaps.md) — theme enum must include "sapphire"; role enum must match ROLES array in ProfileModal; community yahrzeit admin routes are at /community/admin/yahrzeit (not /admin/yahrzeit).
+- [Memorial backend V1 architecture](memorial-backend-v1.md) — 8 Drizzle schemas in lib/db/src/schema/memorial.ts; repos+services in artifacts/api-server/src/memorial/; routes at /api/memorials; migrate.ts does idempotent enum+table creation on startup.
+- [Memorial navigation (SPR-024/034A)](memorial-navigation-spr024.md) — MemorialSanctuaryPage + MemorialProfilePage DELETED (SPR-034A); SanctuaryHeader/Hero/WorldPreview/PlaceholderCard/LoadingState also deleted; sole production path: onMemorial → setModal("community-yahrzeit") → CommunityYahrzeitModal → MemorialSanctuaryModal (3D).
+- [Memorial batch hydration + SQL sort](memorial-batch-hydration.md) — _hydrateMany() uses IN queries (2 queries/page vs 2N); search() uses SQL ORDER BY for 4/5 sorts; upcoming_yahrzeit still JS-sorts after batch load.
+- [Memorial browser panel (SPR-025)](memorial-browser-spr025.md) — MemorialBrowserPanel.tsx is a self-contained file; BrowsePanel + FullMemorialProfile both live there; modal uses showBrowse (replaces showStrip) to render it; two memorial systems: System A = CommunityYahrzeit (in modal), System B = full /api/memorials (in browser panel).
+- [AI Gateway architecture (SPR-033)](ai-gateway.md) — OpenAI primary → Gemini → Grok fallback; circuit breaker in health.ts; buildSystemPrompt() injects live Hebrew date+zmanim; CalendarCtx threaded through gateway; all 3 keys (OPENAI_API_KEY, GOOGLE_API_KEY, GROK_API_KEY) must be in Replit secrets.
+- [Memorial Sanctuary — camera reset bug](memorial-camera-reset-bug.md) — entries in AAAFocusCamera deps caused camera teleport on every API poll; fix = entriesRef pattern + walkMode guard + animType ref.
+- [Gold token split](gold-token-split.md) — GOLD=#d4a843 (all UI) vs GOLD_SANCTUARY=#D4AF37 (Memorial 3D only); intentional distinction, not a bug.
+- [Memorial Sanctuary — no fabricated data](memorial-no-fake-data.md) — all fake counts/names/activity removed in SPR-035; real data or honest empty state only.
+- [Mobile production build verification](mobile-build-verify.md) — run `node scripts/build.js` in artifacts/menashe-mobile to verify prod build; port conflict with dev workflow is harmless.
+- [SPR-M012 Sacred Wisdom](spr-m012-sacred-wisdom.md) — Rav Menashe chat screen; expo/fetch required for streaming; entry via Torah tab; conversations in AsyncStorage.
+- [Community Hub architecture (SPR-M009)](community-hub-spr-m009.md) — 7-section hub in app/(tabs)/community.tsx; deep screens at app/community/announcements.tsx + memorials.tsx; real API via lib/prayerBoardApi.ts; amen is increment-only (no un-amen); memorials screen keeps dark CANDLE_BG (#0e0b1e) for atmosphere but uses useColors() for modals/forms.
+- [Announcement navigation](announcement-navigation.md) — Home bell is the single global entry point; do not duplicate announcements inside the More/Community hub.
+- [MMDL hook tokens in StyleSheet](mmdl-stylesheet-guard.md) — sp/rd/type from useThemeTokens() crash in StyleSheet.create() (module-level); use numeric literals there; ESLint no-restricted-syntax rule guards this in artifacts/menashe-mobile/.eslintrc.js.
+- [Member Directory server migration](member-directory-migration.md) — localStorage→DB pattern; DO $ dollar-quote gotcha in migrate.ts; api-server dev script won't rebuild if dist/index.mjs already exists.
+- [Translations file split](translations-file-split.md) — web calendar app has its own standalone translations.ts; mobile re-exports lib/shared-core/translations — add new bilingual keys to the right one.
+- [MMDL missing color token aliases](mmdl-color-aliases.md) — ColorTokens had no surfacePrimary/surfaceTertiary/surfaceInteractive/backgroundElevated/backgroundOverlay/borderDefault/borderSoft/textHigh; add as aliases in all 3 theme defs when new screens use them.
+- [shared-core dist build required](shared-core-dist-build.md) — lib/shared-core exports src directly but tsconfig project refs need dist; run `pnpm run typecheck:libs` (tsc --build) from root to build dist/ before mobile tsc check.
+- [Torah tab Library destination](library-torah-tab.md) — Torah is the primary premium Library entry point; legacy /siddur reuses it instead of keeping a second catalog UI.
+- [Expo Library cache refresh](expo-library-cache.md) — restart Expo with Metro cache clearing when mobile Library previews appear stale after UI edits.
+- [Durable web notification producers](durable-web-notification-producers.md) — persisted events and their web jobs must commit together; stable occurrence IDs alone do not prevent crash-window loss.
+- [Recurring web schedule renewal](recurring-web-schedule-renewal.md) — persist validated recurrence config and renew queued occurrences server-side before the horizon expires.
+- [Autoscale startup DDL](autoscale-startup-ddl.md) — never block artifact port startup on schema mutations; use dev bootstrap and Replit publish schema synchronization.
+- [Netlify-only Vite configuration](vite-netlify-build-scope.md) — gate Netlify URL validation on the Netlify environment, not generic production builds used by Replit artifacts.
+- [R3F optional peer isolation](r3f-optional-peer-isolation.md) — prevent web-only React Three/Fiber from inheriting Expo peers from another workspace artifact.
+- [Replit Auth provisioning](replit-auth-provisioning.md) — enable managed Auth before migrating; do not guess the session or OIDC contract.
+- [Replit proxy CORS](replit-proxy-cors.md) — production API must treat the trusted forwarded public host as same-origin, alongside the explicit origin allowlist.
+- [Auth route presentation](auth-route-presentation.md) — auth routes must bypass the global splash/onboarding overlay so recovery states are immediately actionable.
+- [Supabase identity continuity](supabase-identity-continuity.md) — never persist a fallback account while the legacy identity directory is unavailable; defer and retry resolution.

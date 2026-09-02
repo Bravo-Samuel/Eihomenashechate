@@ -1,0 +1,154 @@
+modules = ["nodejs-20", "python-3.12", "web", "postgresql-16"]
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+run = ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
+build = ["pnpm", "--filter", "@workspace/api-server", "run", "build"]
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "artifacts/mockup-sandbox: Component Preview Server"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "XegfDyZt7HqfW2Bb8Ghoy"
+isCanvasWorkflow = true
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/mockup-sandbox run dev"
+cwd = "./artifacts/mockup-sandbox"
+waitForPort = 8081
+ensurePreviewReachable = "/"
+router = "path"
+
+[workflows.workflow.tasks.env]
+PORT = "8081"
+BASE_PATH = "/__mockup"
+
+[[workflows.workflow]]
+name = "artifacts/menashe-mobile: expo"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "artifacts/menashe-mobile"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/menashe-mobile run dev"
+cwd = "./artifacts/menashe-mobile"
+waitForPort = 25726
+ensurePreviewReachable = "/status"
+router = "expo-domain"
+
+[workflows.workflow.tasks.env]
+PORT = "25726"
+BASE_PATH = "/mobile/"
+
+[[workflows.workflow]]
+name = "artifacts/menashe-calendar: web"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "artifacts/menashe-calendar"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/menashe-calendar run dev"
+cwd = "./artifacts/menashe-calendar"
+waitForPort = 21636
+ensurePreviewReachable = "/"
+router = "path"
+
+[workflows.workflow.tasks.env]
+PORT = "21636"
+BASE_PATH = "/"
+VITE_CLERK_PROXY_URL = "/__clerk"
+VITE_DEV_PREVIEW = "true"
+
+[[workflows.workflow]]
+name = "artifacts/api-server: API Server"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "3B4_FFSkEVBkAeYMFRJ2e"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run dev"
+cwd = "./artifacts/api-server"
+waitForPort = 8080
+ensurePreviewReachable = "/"
+router = "path"
+
+[workflows.workflow.tasks.env]
+PORT = "8080"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/menashe-calendar: web"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/api-server: API Server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/mockup-sandbox: Component Preview Server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/menashe-mobile: expo"
+
+[agent]
+stack = "BEST_EFFORT_FALLBACK"
+expertMode = true
+integrations = ["javascript_openai_ai_integrations:2.0.0", "javascript_gemini_ai_integrations:2.0.0"]
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 120000
+
+[nix]
+channel = "stable-25_05"
+packages = ["lv"]
+
+[userenv]
+
+[userenv.shared]
+VAPID_PUBLIC_KEY = "BOqeOYdujQRpuveFsz_snrtPpkLZdyj1W4A21JHYPLRJ2hpAWeZwJi7AKCzzLdHvOmHVkmYDN3w0cIE2TFAoX5Q"
+VAPID_SUBJECT = "mailto:admin@menashecalendar.app"
+VITE_CLERK_PROXY_URL = "/__clerk"
+ADMIN_USER_ID = "user_3FPrdIHD0jHZYORFdutfQ4aspal"
+VITE_VAPID_PUBLIC_KEY = "BOqeOYdujQRpuveFsz_snrtPpkLZdyj1W4A21JHYPLRJ2hpAWeZwJi7AKCzzLdHvOmHVkmYDN3w0cIE2TFAoX5Q"
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_YWR2YW5jZWQtbGxhbWEtNjIuY2xlcmsuYWNjb3VudHMuZGV2JA"
+PRIVATE_OBJECT_DIR = "/replit-objstore-cdeb61c2-fad6-42a6-9d1e-3735d30f4434/private"
+PUBLIC_OBJECT_SEARCH_PATHS = "/replit-objstore-cdeb61c2-fad6-42a6-9d1e-3735d30f4434/public"
+ALLOWED_ORIGINS = "https://menashecal.netlify.app"
+VITE_SUPABASE_URL = "https://oybgxqikjdgfofhijqwf.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_sTNzW8yMDJEgtEHXkwQ9XQ_6ZPdQGjH"
+
+[userenv.production]
+
+[objectStorage]
+defaultBucketID = "replit-objstore-5f840e92-c21b-4e43-9a6a-05f36c892953"

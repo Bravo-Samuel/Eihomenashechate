@@ -1,0 +1,7 @@
+# Netlify redirect rules for the Menashe Calendar SPA.
+# The production API proxy rule is generated during `vite build` from
+# NETLIFY_API_URL; keeping a placeholder URL here would make accidental
+# deployments route requests to a non-existent backend.
+#
+# This fallback remains in the public source tree for non-production previews.
+/*  /index.html  200

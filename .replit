@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "python-3.12", "web"]
+modules = ["nodejs-20", "python-3.12", "postgresql-16", "web"]
 
 [deployment]
 router = "application"
@@ -59,7 +59,7 @@ BASE_PATH = "/mobile/"
 [[workflows.workflow]]
 name = "artifacts/menashe-calendar: web"
 author = "agent"
-mode = "sequential"
+mode = "parallel"
 
 [workflows.workflow.metadata]
 outputType = "webview"
@@ -76,8 +76,6 @@ router = "path"
 [workflows.workflow.tasks.env]
 PORT = "21636"
 BASE_PATH = "/"
-VITE_CLERK_PROXY_URL = "/__clerk"
-VITE_DEV_PREVIEW = "true"
 
 [[workflows.workflow]]
 name = "artifacts/api-server: API Server"
@@ -98,27 +96,6 @@ router = "path"
 
 [workflows.workflow.tasks.env]
 PORT = "8080"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "artifacts/menashe-calendar: web"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "artifacts/api-server: API Server"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "artifacts/mockup-sandbox: Component Preview Server"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "artifacts/menashe-mobile: expo"
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
@@ -152,3 +129,6 @@ VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_sTNzW8yMDJEgtEHXkwQ9XQ_6ZPdQGjH"
 
 [objectStorage]
 defaultBucketID = "replit-objstore-5f840e92-c21b-4e43-9a6a-05f36c892953"
+
+[[ports]]
+localPort = 5000

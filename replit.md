@@ -5,7 +5,7 @@
 
 Project imported from GitHub and set up on Replit:
 
-- **Dependencies**: `pnpm install` run at root — all 1728 packages resolved and hoisted to root `node_modules` via `shamefully-hoist=true` (.npmrc).
+- **Dependencies**: `pnpm install --frozen-lockfile` runs at root — the original `orval@8.9.1` tarball is blocked by Replit's package firewall, so `lib/api-spec` intentionally pins the compatible `orval@8.27.0` release for repeatable imports; packages are hoisted to root `node_modules` via `shamefully-hoist=true` (.npmrc).
 - **Database**: Replit-managed PostgreSQL provisioned and reachable. Development API startup applies the idempotent bootstrap migrations. Production API startup never runs migrations or seeds; Replit Publish must initialize the production schema.
 - **Workflows**: Four managed workflows are configured for the web app, API, mobile app, and design sandbox.
 - **Authentication**: The web and API use Supabase Auth with email/password sessions. The browser attaches Supabase bearer tokens to same-origin API calls; the API verifies each token and resolves it to a stable application account ID.

@@ -109,7 +109,14 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         setStatus("signed-out");
         return "signed-out";
       }
-      if (!response.ok) {
+      if (response.status === 401) {
+      setUser(null);
+      setStatus("signed-out");
+      setAuthError(null);
+      return "signed-out";
+    }
+
+    if (!response.ok) {
         throw new Error(`Auth check failed with ${response.status}`);
       }
       const body = (await response.json()) as {

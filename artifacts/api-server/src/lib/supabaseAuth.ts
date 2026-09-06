@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
 import type { NextFunction, Request, Response } from "express";
 import { Router } from "express";
 import { pool } from "@workspace/db";
@@ -39,9 +39,12 @@ declare global {
   }
 }
 
-let serverClient: SupabaseClient | null = null;
+type SupabaseConfig = {
+  url: string;
+  publishableKey: string;
+};
 
-function config(): { url: string; publishableKey: string } | null {
+function config(): SupabaseConfig | null {
   const url = process.env.VITE_SUPABASE_URL?.trim();
   const publishableKey =
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
@@ -49,18 +52,19 @@ function config(): { url: string; publishableKey: string } | null {
   return { url, publishableKey };
 }
 
-function getServerClient(): SupabaseClient | null {
-  if (serverClient) return serverClient;
-  const current = config();
-  if (!current) return null;
-  serverClient = createClient(current.url, current.publishableKey, {
-    auth: {
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-      persistSession: false,
+async function getUserFromAccessToken(
+  token: string,
+  current: SupabaseConfig,
+): Promise<User | null> {
+  const response = await fetch(`${current.url}/auth/v1/user`, {
+    headers: {
+      Accept: "application/json",
+      apikey: current.publishableKey,
+      Authorization: `Bearer ${token}`,
     },
   });
-  return serverClient;
+  if (!response.ok) return null;
+  return (await response.json()) as User;
 }
 
 function bearerToken(req: Request): string | null {
@@ -272,8 +276,8 @@ export function supabaseAuthMiddleware(
       return;
     }
 
-    const supabase = options.verifyToken ? null : getServerClient();
-    if (!options.verifyToken && !supabase) {
+    const supabaseConfig = options.verifyToken ? null : config();
+    if (!options.verifyToken && !supabaseConfig) {
       logger.error(
         "Supabase Auth is not configured — set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY",
       );
@@ -284,8 +288,7 @@ export function supabaseAuthMiddleware(
     const verifyToken =
       options.verifyToken ??
       (async (value: string) => {
-        const { data, error } = await supabase!.auth.getUser(value);
-        return error ? null : data.user;
+        return getUserFromAccessToken(value, supabaseConfig!);
       });
 
     verifyToken(token)

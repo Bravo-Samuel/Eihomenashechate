@@ -49,3 +49,4 @@
 - [Auth route presentation](auth-route-presentation.md) — auth routes must bypass the global splash/onboarding overlay so recovery states are immediately actionable.
 - [Supabase identity continuity](supabase-identity-continuity.md) — never persist a fallback account while the legacy identity directory is unavailable; defer and retry resolution.
 - [Replit package firewall](orval-firewall.md) — when an older direct package tarball is blocked, use a compatible current release and document the reason for reproducible installs.
+- [Supabase server auth on Node 20](supabase-server-node20.md) — server-side supabase-js can initialize Realtime and require native WebSocket; use Auth REST verification when Realtime is unused.

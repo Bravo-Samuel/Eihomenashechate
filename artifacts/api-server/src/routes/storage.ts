@@ -4,16 +4,29 @@ import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage"
 import { ObjectPermission, canAccessObject } from "../lib/objectAcl";
 import { requireAuth } from "../lib/requireAuth";
 import { safeGetAuth } from "../lib/authorization";
+import {
+  createUploadUrl,
+  isSupabaseStorageConfigured,
+  StorageNotConfiguredError,
+} from "../lib/supabaseStorage";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
+
+function replitObjectStorageAvailable(): boolean {
+  return Boolean(
+    process.env.PRIVATE_OBJECT_DIR?.trim() &&
+      process.env.PUBLIC_OBJECT_SEARCH_PATHS?.trim(),
+  );
+}
 
 /**
  * POST /storage/uploads/request-url
  *
  * Request a presigned URL for file upload.
- * The client sends JSON metadata (name, size, contentType) — NOT the file.
- * Then uploads the file directly to the returned presigned URL.
+ * Prefers Supabase Storage when configured; otherwise falls back to Replit
+ * Object Storage. Returns 503 when neither backend is available.
+ * Auth remains required — uploads are an account feature.
  */
 router.post("/storage/uploads/request-url", requireAuth, async (req: Request, res: Response) => {
   const { name, size, contentType } = req.body ?? {};
@@ -23,11 +36,44 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
   }
 
   try {
+    if (isSupabaseStorageConfigured()) {
+      const result = await createUploadUrl({
+        contentType,
+        fileName: name,
+        pathPrefix: "uploads",
+      });
+      res.json({
+        uploadURL: result.uploadURL,
+        objectPath: result.objectPath,
+        publicUrl: result.publicUrl,
+        metadata: { name, size, contentType },
+        backend: "supabase",
+      });
+      return;
+    }
+
+    if (!replitObjectStorageAvailable()) {
+      res.status(503).json({
+        error:
+          "Object storage is not configured. Set SUPABASE_SERVICE_ROLE_KEY and SUPABASE_URL (or VITE_SUPABASE_URL), or configure Replit PRIVATE_OBJECT_DIR / PUBLIC_OBJECT_SEARCH_PATHS.",
+      });
+      return;
+    }
+
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
-    res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+    res.json({
+      uploadURL,
+      objectPath,
+      metadata: { name, size, contentType },
+      backend: "replit",
+    });
   } catch (error) {
+    if (error instanceof StorageNotConfiguredError) {
+      res.status(503).json({ error: error.message });
+      return;
+    }
     req.log.error({ err: error }, "Error generating upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });
   }

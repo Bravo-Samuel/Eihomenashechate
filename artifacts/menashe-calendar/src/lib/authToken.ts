@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 
 export async function getAuthToken(): Promise<string | null> {
+  if (!supabase) return null;
   const {
     data: { session },
   } = await supabase.auth.getSession();

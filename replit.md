@@ -1,16 +1,18 @@
 # Menashe Calendar
 
 
-## Setup Status (as of 2026-09-01)
+## Setup Status (as of 2026-10-02)
 
 Project imported from GitHub and set up on Replit:
 
 - **Dependencies**: `pnpm install --frozen-lockfile` runs at root — the original `orval@8.9.1` tarball is blocked by Replit's package firewall, so `lib/api-spec` intentionally pins the compatible `orval@8.27.0` release for repeatable imports; packages are hoisted to root `node_modules` via `shamefully-hoist=true` (.npmrc).
 - **Database**: Replit-managed PostgreSQL provisioned and reachable. Development API startup applies the idempotent bootstrap migrations. Production API startup never runs migrations or seeds; Replit Publish must initialize the production schema.
 - **Workflows**: Four managed workflows are configured for the web app, API, mobile app, and design sandbox.
-- **Authentication**: The web and API use Supabase Auth with email/password sessions. The browser attaches Supabase bearer tokens to same-origin API calls; the API verifies each token and resolves it to a stable application account ID.
+- **Authentication**: The web and API use Supabase Auth with email/password sessions when `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set. Auth is optional for browsing Calendar, Zmanim, and Siddur — missing env vars must not crash the app. The browser attaches Supabase bearer tokens to same-origin API calls; the API verifies each token and resolves it to a stable application account ID. Uploads prefer Supabase Storage (`SUPABASE_SERVICE_ROLE_KEY` + bucket) and fall back to Replit Object Storage when configured.
 - **Account continuity**: A new verified Supabase identity is linked automatically only when its email matches exactly one existing verified identity. Ambiguous matches remain isolated for explicit administrator review.
 - **Optional secrets not yet set**: `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GROK_API_KEY` (AI chat), and `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` (payments) — the app runs without these but those features are disabled.
+- **Import verification**: Dependencies installed from the existing lockfile; web home rendered successfully; `/health` and `/api/healthz` return `{"status":"ok"}`. All four managed workflows start. Web push also requires VAPID configuration.
+- **Mobile startup**: The dev command preserves `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`, falling back to `CLERK_PUBLISHABLE_KEY` only when needed. Android bundle export succeeds (`pnpm --filter @workspace/menashe-mobile exec expo export --platform android --output-dir /tmp/menashe-android-check`). Expo reports existing dependency-version warnings; native-device interaction and signed-in screens have not been verified.
 
 A sacred Jewish calendar app for the Bnei Menashe community — featuring Hebrew/Jewish calendar, Zmanim (prayer times), Parasha, Daf Yomi, holidays, a Siddur library, 3D Memorial Sanctuary, community tools, and AI-powered sacred wisdom chat.
 
@@ -48,13 +50,17 @@ Note: `scripts/start-dev.sh` (old combined frontend+API launcher) is superseded 
 
 ### Environment / secrets
 
-**Required to run:**
+**Required / recommended to run:**
+
+> `VITE_SUPABASE_*` are recommended for sign-in and account features but are **not required** to browse Calendar, Zmanim, or Siddur. For file uploads, prefer `SUPABASE_SERVICE_ROLE_KEY` + `SUPABASE_STORAGE_BUCKET` (falls back to Replit `PRIVATE_OBJECT_DIR` / `PUBLIC_OBJECT_SEARCH_PATHS`).
 
 | Key | Where | Notes |
 |-----|-------|-------|
 | `DATABASE_URL` | Runtime-managed | PostgreSQL attached by Replit — do not set manually |
-| `VITE_SUPABASE_URL` | Shared environment | Public Supabase project URL used by the web and API auth clients |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Shared environment | Public Supabase browser key; never substitute a service-role key |
+| `VITE_SUPABASE_URL` | Shared environment | Public Supabase project URL used by the web and API auth clients. **Optional for browsing** — Calendar, Zmanim, and Siddur work without it; sign-in and account APIs need it. |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Shared environment | Public Supabase browser key; never substitute a service-role key. Optional for browsing (same as URL). |
+| `SUPABASE_SERVICE_ROLE_KEY` | Replit Secrets (server only) | Enables Supabase Storage signed uploads. Never expose via `VITE_*`. |
+| `SUPABASE_STORAGE_BUCKET` | Server environment | Storage bucket name (default `uploads`). Public bucket or signed URLs. |
 | `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | Shared environment | Mobile Clerk publishable key |
 | `VAPID_PUBLIC_KEY` | `.replit` userenv.shared | Web push public key |
 | `VAPID_SUBJECT` | `.replit` userenv.shared | Web push contact email |

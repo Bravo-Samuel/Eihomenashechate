@@ -64,7 +64,14 @@ const DEV_PREVIEW = import.meta.env.DEV &&
     new URLSearchParams(window.location.search).get("preview") === "1");
 const DEV_ONBOARDING = import.meta.env.DEV &&
   new URLSearchParams(window.location.search).get("onboarding") === "1";
-const AUTH_ROUTE = /^\/sign-(in|up)(\/|$)/.test(window.location.pathname);
+const routePath =
+  basePath && window.location.pathname.startsWith(`${basePath}/`)
+    ? window.location.pathname.slice(basePath.length) || "/"
+    : window.location.pathname;
+const AUTH_ROUTE =
+  /^\/(?:sign-(?:in|up)|forgot-password|reset-password)(?:\/|$)/.test(
+    routePath,
+  );
 
 installAuthFetch();
 

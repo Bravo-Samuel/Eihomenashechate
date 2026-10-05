@@ -10,6 +10,8 @@ import {
 } from "react";
 import PageSkeleton from "./components/PageSkeleton";
 import {
+  ForgotPassword,
+  ResetPassword,
   SignIn,
   SignUp,
   Show,
@@ -274,6 +276,22 @@ function SignUpPage() {
   return (
     <AuthCard>
       <SignUp />
+    </AuthCard>
+  );
+}
+
+function ForgotPasswordPage() {
+  return (
+    <AuthCard>
+      <ForgotPassword />
+    </AuthCard>
+  );
+}
+
+function ResetPasswordPage() {
+  return (
+    <AuthCard>
+      <ResetPassword />
     </AuthCard>
   );
 }
@@ -1244,6 +1262,8 @@ export default function App() {
           <Route path="/zmanim" component={AppRoute} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
+          <Route path="/forgot-password" component={ForgotPasswordPage} />
+          <Route path="/reset-password" component={ResetPasswordPage} />
           <Route>
             <Redirect to="/" />
           </Route>

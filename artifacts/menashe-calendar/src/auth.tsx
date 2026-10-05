@@ -39,6 +39,8 @@ type AuthContextValue = {
   refresh: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<AuthActionResult>;
   signUp: (email: string, password: string) => Promise<AuthActionResult>;
+  requestPasswordReset: (email: string) => Promise<AuthActionResult>;
+  updatePassword: (password: string) => Promise<AuthActionResult>;
   signOut: () => Promise<void>;
 };
 
@@ -52,6 +54,11 @@ function requireAuthContext(): AuthContextValue {
     throw new Error("Auth hooks must be used inside SupabaseAuthProvider");
   }
   return context;
+}
+
+function getPasswordResetRedirectUrl(): string {
+  const appBaseUrl = new URL(import.meta.env.BASE_URL, window.location.origin);
+  return new URL("reset-password", appBaseUrl).toString();
 }
 
 function mapUser(body: {
@@ -198,6 +205,35 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     [syncSession],
   );
 
+  const requestPasswordReset = useCallback(
+    async (email: string): Promise<AuthActionResult> => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: getPasswordResetRedirectUrl(),
+      });
+      return { error: error?.message ?? null };
+    },
+    [],
+  );
+
+  const updatePassword = useCallback(
+    async (password: string): Promise<AuthActionResult> => {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        return { error: "recovery_session_required" };
+      }
+
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) return { error: error.message };
+
+      await supabase.auth.signOut({ scope: "local" });
+      return { error: null };
+    },
+    [],
+  );
+
   const signOut = useCallback(async () => {
     try {
       await supabase.auth.signOut();
@@ -217,9 +253,22 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       refresh,
       signIn,
       signUp,
+      requestPasswordReset,
+      updatePassword,
       signOut,
     }),
-    [authError, isLoaded, refresh, signIn, signOut, signUp, status, user],
+    [
+      authError,
+      isLoaded,
+      refresh,
+      requestPasswordReset,
+      signIn,
+      signOut,
+      signUp,
+      status,
+      updatePassword,
+      user,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -280,6 +329,7 @@ const authCopy = {
     signInEyebrow: "PERSONAL CALENDAR · COMMUNITY",
     signInTitle: "Welcome back",
     signInBody: "Your calendar, learning, and community life in one place.",
+    forgotPasswordLink: "Forgot password?",
     signInButton: "Sign in",
     signInBusy: "Signing in…",
     signUpEyebrow: "BEGIN YOUR JOURNEY",
@@ -290,6 +340,8 @@ const authCopy = {
     signUpBusy: "Creating account…",
     emailLabel: "Email address",
     emailPlaceholder: "you@example.com",
+    emailRequired: "Enter your email address.",
+    emailInvalid: "Enter a valid email address.",
     passwordLabel: "Password",
     confirmPasswordLabel: "Confirm password",
     newMember: "New to Bnei Menashe?",
@@ -321,11 +373,40 @@ const authCopy = {
     confirmationTitle: "Check your email",
     confirmationBody:
       "Supabase sent a confirmation link to your email address. Confirm it, then return here to sign in.",
+    recoveryEyebrow: "ACCOUNT RECOVERY",
+    forgotPasswordTitle: "Reset your password",
+    forgotPasswordBody:
+      "Enter the email address linked to your account and we'll send a secure recovery link.",
+    sendRecoveryLink: "Send recovery link",
+    sendingRecoveryLink: "Sending link…",
+    recoveryEmailSentTitle: "Check your email",
+    recoveryEmailSentBody:
+      "If an account exists for that address, a recovery link is on its way. Check your inbox and spam folder.",
+    recoveryEmailError:
+      "We couldn't send the recovery email right now. Please try again.",
+    resetPasswordTitle: "Choose a new password",
+    resetPasswordBody: "Create a new password for your MENASHE account.",
+    newPasswordLabel: "New password",
+    confirmNewPasswordLabel: "Confirm new password",
+    saveNewPassword: "Save new password",
+    savingNewPassword: "Updating password…",
+    recoveryChecking: "Checking your recovery link…",
+    recoveryExpiredTitle: "Recovery link unavailable",
+    recoveryExpiredBody:
+      "This link is invalid, expired, or already used. Request a new recovery link to continue.",
+    requestAnotherRecoveryLink: "Request another link",
+    passwordUpdatedTitle: "Password updated",
+    passwordUpdatedBody:
+      "Your password has been changed. Sign in with your new password.",
+    passwordUpdateError: "We couldn't update your password. Please try again.",
+    recoverySessionRequired:
+      "This recovery link is invalid or has expired. Request a new link.",
   },
   tk: {
     signInEyebrow: "ŞAHSY SENENAMA · JEMGYÝET",
     signInTitle: "Hoş geldiňiz",
     signInBody: "Senenamaňyz, öwrenişiňiz we jemgyýet durmuşyňyz bir ýerde.",
+    forgotPasswordLink: "Password ka thei lo?",
     signInButton: "Giriň",
     signInBusy: "Giriş edilýär…",
     signUpEyebrow: "SYÝAHATYŇYZY BAŞLAŇ",
@@ -336,6 +417,8 @@ const authCopy = {
     signUpBusy: "Hasap döredilýär…",
     emailLabel: "E-poçta salgysy",
     emailPlaceholder: "siz@example.com",
+    emailRequired: "Email address ziak rawh.",
+    emailInvalid: "Email address dik ziak rawh.",
     passwordLabel: "Parol",
     confirmPasswordLabel: "Paroly tassyklaň",
     newMember: "Bnei Menashe-de täzemi?",
@@ -367,6 +450,34 @@ const authCopy = {
     confirmationTitle: "E-poçtaňyzy barlaň",
     confirmationBody:
       "Supabase e-poçtaňyza tassyklama baglanyşygyny iberdi. Ony tassyklaň, soň giriş üçin bu ýere dolanyň.",
+    recoveryEyebrow: "ACCOUNT RECOVERY",
+    forgotPasswordTitle: "Password thar siam",
+    forgotPasswordBody:
+      "Na account email address ziak rawh; recovery link i email ah thawn ding.",
+    sendRecoveryLink: "Recovery link thawn",
+    sendingRecoveryLink: "Link thawn mek…",
+    recoveryEmailSentTitle: "Email en rawh",
+    recoveryEmailSentBody:
+      "Account a awm a leh recovery link email ah thawn ding. Inbox leh spam en rawh.",
+    recoveryEmailError:
+      "Recovery email thawn thei lo. Manin siam leh rawh.",
+    resetPasswordTitle: "Password thar siam",
+    resetPasswordBody: "Na MENASHE account tan password thar siam rawh.",
+    newPasswordLabel: "Password thar",
+    confirmNewPasswordLabel: "Password thar confirm",
+    saveNewPassword: "Password thar save",
+    savingNewPassword: "Password siam mek…",
+    recoveryChecking: "Recovery link en mek…",
+    recoveryExpiredTitle: "Recovery link a hun tawp ta",
+    recoveryExpiredBody:
+      "Link hi dik lo, hun a tawp, emaw hman zo ta. Link thar request siam rawh.",
+    requestAnotherRecoveryLink: "Link thar request",
+    passwordUpdatedTitle: "Password thar siam zo",
+    passwordUpdatedBody:
+      "Na password thar siam zo. Password thar hmangin sign in siam rawh.",
+    passwordUpdateError: "Password update thei lo. Manin siam leh rawh.",
+    recoverySessionRequired:
+      "Recovery link hi dik lo emaw hun a tawp ta. Link thar request siam rawh.",
   },
 } as const;
 
@@ -534,6 +645,14 @@ function AuthForm({
           required
         />
       </label>
+      {mode === "sign-in" && (
+        <a
+          className="auth-forgot-link"
+          href={`/forgot-password?returnTo=${encodeURIComponent(returnTo)}`}
+        >
+          {copy.forgotPasswordLink}
+        </a>
+      )}
       {mode === "sign-up" && (
         <label className="auth-field">
           <span>{copy.confirmPasswordLabel}</span>
@@ -570,6 +689,269 @@ function AuthForm({
             : copy.signUpButton}
       </button>
     </form>
+  );
+}
+
+export function ForgotPassword() {
+  const { copy, returnTo } = useAuthPageContext();
+  const { requestPasswordReset } = requireAuthContext();
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const signInHref = `/sign-in?returnTo=${encodeURIComponent(returnTo)}`;
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (busy) return;
+    setError(null);
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setError(copy.emailRequired);
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError(copy.emailInvalid);
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const result = await requestPasswordReset(normalizedEmail);
+      if (result.error) {
+        setError(copy.recoveryEmailError);
+        return;
+      }
+      setSent(true);
+    } catch {
+      setError(copy.recoveryEmailError);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (sent) {
+    return (
+      <div className="auth-form-content">
+        <div className="auth-eyebrow">{copy.recoveryEyebrow}</div>
+        <h2 className="auth-title">{copy.recoveryEmailSentTitle}</h2>
+        <div className="auth-confirmation" role="status" aria-live="polite">
+          <div className="auth-confirmation-mark" aria-hidden="true">✓</div>
+          <p>{copy.recoveryEmailSentBody}</p>
+        </div>
+        <a href={signInHref} className="auth-back">
+          {copy.signInLink}
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="auth-form-content">
+      <div className="auth-eyebrow">{copy.recoveryEyebrow}</div>
+      <h2 className="auth-title">{copy.forgotPasswordTitle}</h2>
+      <p className="auth-description">{copy.forgotPasswordBody}</p>
+      <form className="auth-fields" onSubmit={submit} noValidate>
+        <label className="auth-field">
+          <span>{copy.emailLabel}</span>
+          <input
+            className="auth-input"
+            type="email"
+            name="email"
+            autoComplete="email"
+            inputMode="email"
+            placeholder={copy.emailPlaceholder}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            disabled={busy}
+            required
+          />
+        </label>
+        {error && (
+          <div role="alert" className="auth-error">
+            {error}
+          </div>
+        )}
+        <button
+          className="mds-btn-gold auth-cta"
+          type="submit"
+          disabled={busy}
+          aria-busy={busy}
+        >
+          {busy ? copy.sendingRecoveryLink : copy.sendRecoveryLink}
+        </button>
+      </form>
+      <a href={signInHref} className="auth-back">
+        {copy.signInLink}
+      </a>
+    </div>
+  );
+}
+
+export function ResetPassword() {
+  const { copy } = useAuthPageContext();
+  const { updatePassword } = requireAuthContext();
+  const [hasSession, setHasSession] = useState<boolean | null>(null);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [complete, setComplete] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const checkSession = async () => {
+      try {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+        if (active) setHasSession(!sessionError && Boolean(session));
+      } catch {
+        if (active) setHasSession(false);
+      }
+    };
+
+    void checkSession();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active) setHasSession(Boolean(session));
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (busy) return;
+    setError(null);
+
+    if (password.length < 8) {
+      setError(copy.passwordTooShort);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError(copy.passwordMismatch);
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const result = await updatePassword(password);
+      if (result.error === "recovery_session_required") {
+        setHasSession(false);
+        setError(copy.recoverySessionRequired);
+        return;
+      }
+      if (result.error) {
+        setError(copy.passwordUpdateError);
+        return;
+      }
+      setComplete(true);
+    } catch {
+      setError(copy.passwordUpdateError);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (complete) {
+    return (
+      <div className="auth-form-content">
+        <div className="auth-eyebrow">{copy.recoveryEyebrow}</div>
+        <h2 className="auth-title">{copy.passwordUpdatedTitle}</h2>
+        <div className="auth-confirmation" role="status" aria-live="polite">
+          <div className="auth-confirmation-mark" aria-hidden="true">✓</div>
+          <p>{copy.passwordUpdatedBody}</p>
+        </div>
+        <a href="/sign-in" className="auth-back">
+          {copy.signInLink}
+        </a>
+      </div>
+    );
+  }
+
+  if (hasSession === null) {
+    return (
+      <div className="auth-form-content">
+        <div className="auth-eyebrow">{copy.recoveryEyebrow}</div>
+        <div className="auth-confirmation" role="status" aria-live="polite">
+          {copy.recoveryChecking}
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasSession) {
+    return (
+      <div className="auth-form-content">
+        <div className="auth-eyebrow">{copy.recoveryEyebrow}</div>
+        <h2 className="auth-title">{copy.recoveryExpiredTitle}</h2>
+        <p className="auth-description">{copy.recoveryExpiredBody}</p>
+        <a href="/forgot-password" className="auth-cta mds-btn-gold auth-action-link">
+          {copy.requestAnotherRecoveryLink}
+        </a>
+        <a href="/sign-in" className="auth-back">
+          {copy.signInLink}
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="auth-form-content">
+      <div className="auth-eyebrow">{copy.recoveryEyebrow}</div>
+      <h2 className="auth-title">{copy.resetPasswordTitle}</h2>
+      <p className="auth-description">{copy.resetPasswordBody}</p>
+      <form className="auth-fields" onSubmit={submit} noValidate>
+        <label className="auth-field">
+          <span>{copy.newPasswordLabel}</span>
+          <input
+            className="auth-input"
+            type="password"
+            name="newPassword"
+            autoComplete="new-password"
+            minLength={8}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            disabled={busy}
+            required
+          />
+        </label>
+        <label className="auth-field">
+          <span>{copy.confirmNewPasswordLabel}</span>
+          <input
+            className="auth-input"
+            type="password"
+            name="confirmNewPassword"
+            autoComplete="new-password"
+            minLength={8}
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            disabled={busy}
+            required
+          />
+        </label>
+        {error && (
+          <div role="alert" className="auth-error">
+            {error}
+          </div>
+        )}
+        <button
+          className="mds-btn-gold auth-cta"
+          type="submit"
+          disabled={busy}
+          aria-busy={busy}
+        >
+          {busy ? copy.savingNewPassword : copy.saveNewPassword}
+        </button>
+      </form>
+    </div>
   );
 }
 

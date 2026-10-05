@@ -2158,6 +2158,30 @@ select:focus {
   gap: 14px;
 }
 
+.auth-forgot-link {
+  justify-self: end;
+  margin-top: -6px;
+  color: var(--gold-light);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-forgot-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.auth-action-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  margin-top: 24px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .auth-field {
   display: grid;
   gap: 7px;

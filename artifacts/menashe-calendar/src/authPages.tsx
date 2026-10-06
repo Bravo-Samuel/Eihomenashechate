@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useLanguage } from "./context/LanguageContext";
+import { classifySignUpError } from "./lib/authErrors";
 import { requireAuthContext } from "./lib/supabaseAuthContext";
 
 const authCopy = {
@@ -44,6 +45,18 @@ const authCopy = {
     passwordTooShort: "Use at least 8 characters for your password.",
     invalidCredentials: "The email address or password is incorrect.",
     emailExists: "An account with this email address already exists.",
+    invalidEmail: "Enter a valid email address.",
+    weakPassword:
+      "Choose a stronger password that meets the account's security requirements.",
+    rateLimited: "Too many sign-up attempts. Wait a few minutes and try again.",
+    signupDisabled:
+      "New account creation is currently unavailable. Please contact support.",
+    emailRestricted:
+      "This project cannot send a confirmation email to that address yet. Please contact support.",
+    captchaFailed:
+      "We couldn't verify this request. Refresh the page and try again.",
+    providerUnavailable:
+      "Account creation is temporarily unavailable. Please try again shortly.",
     genericError: "We couldn't complete that request. Please try again.",
     confirmationTitle: "Check your email",
     confirmationBody:
@@ -90,6 +103,19 @@ const authCopy = {
     passwordTooShort: "Parolyňyz azyndan 8 belgiden ybarat bolsun.",
     invalidCredentials: "E-poçta salgysy ýa-da parol nädogry.",
     emailExists: "Bu e-poçta salgysy bilen hasap eýýäm bar.",
+    invalidEmail: "Dogry e-poçta salgysyny giriziň.",
+    weakPassword:
+      "Hasabyň howpsuzlyk talaplaryna laýyk gelýän has güýçli parol saýlaň.",
+    rateLimited:
+      "Hasap açmak synanyşyklary köp boldy. Biraz garaşyň we täzeden synanyşyň.",
+    signupDisabled:
+      "Täze hasap açmak häzir elýeterli däl. Goldaw gullugyna ýüz tutuň.",
+    emailRestricted:
+      "Bu taslama häzir bu salga tassyklama hatyny iberip bilmeýär. Goldaw gullugyna ýüz tutuň.",
+    captchaFailed:
+      "Bu haýyşy tassyklap bilmedik. Sahypany täzeläp, täzeden synanyşyň.",
+    providerUnavailable:
+      "Hasap açmak wagtlaýyn elýeterli däl. Az salymdan täzeden synanyşyň.",
     genericError: "Talaby ýerine ýetirip bilmedik. Täzeden synanyşyň.",
     confirmationTitle: "E-poçtaňyzy barlaň",
     confirmationBody:
@@ -162,6 +188,32 @@ function friendlyAuthError(message: string, copy: AuthCopy): string {
   return copy.genericError;
 }
 
+function friendlySignUpError(
+  error: { code?: string | null; status?: number | null; message: string },
+  copy: AuthCopy,
+): string {
+  switch (classifySignUpError(error)) {
+    case "email-exists":
+      return copy.emailExists;
+    case "invalid-email":
+      return copy.invalidEmail;
+    case "weak-password":
+      return copy.weakPassword;
+    case "rate-limited":
+      return copy.rateLimited;
+    case "signup-disabled":
+      return copy.signupDisabled;
+    case "email-restricted":
+      return copy.emailRestricted;
+    case "captcha-failed":
+      return copy.captchaFailed;
+    case "provider-unavailable":
+      return copy.providerUnavailable;
+    case "unknown":
+      return friendlyAuthError(error.message, copy);
+  }
+}
+
 function AuthForm({
   mode,
   copy,
@@ -205,7 +257,18 @@ function AuthForm({
           ? await signIn(normalizedEmail, password)
           : await signUp(normalizedEmail, password);
       if (result.error) {
-        setError(friendlyAuthError(result.error, copy));
+        setError(
+          mode === "sign-up"
+            ? friendlySignUpError(
+                {
+                  message: result.error,
+                  code: result.errorCode,
+                  status: result.errorStatus,
+                },
+                copy,
+              )
+            : friendlyAuthError(result.error, copy),
+        );
         return;
       }
       if (result.requiresConfirmation) {

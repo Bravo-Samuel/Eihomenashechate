@@ -1,17 +1,19 @@
 # Menashe Calendar
 
 
-## Setup Status (as of 2026-10-02)
+## Setup Status (as of 2026-10-06)
 
 Project imported from GitHub and set up on Replit:
 
 - **Dependencies**: `pnpm install --frozen-lockfile` runs at root — the original `orval@8.9.1` tarball is blocked by Replit's package firewall, so `lib/api-spec` intentionally pins the compatible `orval@8.27.0` release for repeatable imports; packages are hoisted to root `node_modules` via `shamefully-hoist=true` (.npmrc).
+- **Import dependency fix**: The firewall also blocks `proxy-addr@2.0.7`, an Express dependency. The root override pins compatible patch `2.0.8`; the lockfile has been updated without changing Express or the workspace structure.
 - **Database**: Replit-managed PostgreSQL provisioned and reachable. Development API startup applies the idempotent bootstrap migrations. Production API startup never runs migrations or seeds; Replit Publish must initialize the production schema.
 - **Workflows**: Four managed workflows are configured for the web app, API, mobile app, and design sandbox.
 - **Authentication**: The web and API use Supabase Auth with email/password sessions when `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set. Auth is optional for browsing Calendar, Zmanim, and Siddur — missing env vars must not crash the app. The browser attaches Supabase bearer tokens to same-origin API calls; the API verifies each token and resolves it to a stable application account ID. Uploads prefer Supabase Storage (`SUPABASE_SERVICE_ROLE_KEY` + bucket) and fall back to Replit Object Storage when configured.
 - **Account continuity**: A new verified Supabase identity is linked automatically only when its email matches exactly one existing verified identity. Ambiguous matches remain isolated for explicit administrator review.
 - **Optional secrets not yet set**: `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GROK_API_KEY` (AI chat), and `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` (payments) — the app runs without these but those features are disabled.
 - **Import verification**: Dependencies installed from the existing lockfile; web home rendered successfully; `/health` and `/api/healthz` return `{"status":"ok"}`. All four managed workflows start. Web push also requires VAPID configuration.
+- **Latest verification**: All four workflows are running; the proxied web page returns HTTP 200 and renders without browser errors. The database-backed `/api/books` returns eight books. The production web build and Android bundle export both succeed. Signed-in UI and native-device interactions have not been verified.
 - **Mobile startup**: The dev command preserves `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`, falling back to `CLERK_PUBLISHABLE_KEY` only when needed. Android bundle export succeeds (`pnpm --filter @workspace/menashe-mobile exec expo export --platform android --output-dir /tmp/menashe-android-check`). Expo reports existing dependency-version warnings; native-device interaction and signed-in screens have not been verified.
 
 A sacred Jewish calendar app for the Bnei Menashe community — featuring Hebrew/Jewish calendar, Zmanim (prayer times), Parasha, Daf Yomi, holidays, a Siddur library, 3D Memorial Sanctuary, community tools, and AI-powered sacred wisdom chat.

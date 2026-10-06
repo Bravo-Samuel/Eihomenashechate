@@ -9,6 +9,7 @@ import {
 import {
   fetchFamilyTimeline,
   createFamilyTimelineEvent,
+  updateFamilyTimelineEvent,
   deleteFamilyTimelineEvent,
   ApiError,
   type FamilyTimelineEvent,
@@ -16,6 +17,7 @@ import {
   type EventType,
   type CreateEventInput,
 } from "../lib/familyTimelineApi";
+import { useLanguage } from "../context/LanguageContext";
 
 // ── Event type metadata ──────────────────────────────────────────────────────
 const EVENT_META: Record<
@@ -77,11 +79,15 @@ function avatarBg(name: string): string {
 // ── Add-event modal ──────────────────────────────────────────────────────────
 const AddEventModal = memo(function AddEventModal({
   onClose,
-  onAdded,
+  onSaved,
+  initialEvent,
 }: {
   onClose: () => void;
-  onAdded: (ev: FamilyTimelineEvent) => void;
+  onSaved: (ev: FamilyTimelineEvent) => void;
+  initialEvent?: FamilyTimelineEvent;
 }) {
+  const { t } = useLanguage();
+  const isEditing = Boolean(initialEvent);
   const [form, setForm] = useState<{
     eventType: EventType;
     title: string;
@@ -90,15 +96,27 @@ const AddEventModal = memo(function AddEventModal({
     gregorianDate: string;
     hebrewDate: string;
     icon: string;
-  }>({
-    eventType: "milestone",
-    title: "",
-    description: "",
-    memberName: "",
-    gregorianDate: "",
-    hebrewDate: "",
-    icon: "",
-  });
+  }>(() =>
+    initialEvent
+      ? {
+          eventType: initialEvent.eventType,
+          title: initialEvent.title,
+          description: initialEvent.description,
+          memberName: initialEvent.memberName,
+          gregorianDate: initialEvent.gregorianDate ?? "",
+          hebrewDate: initialEvent.hebrewDate,
+          icon: initialEvent.icon,
+        }
+      : {
+          eventType: "milestone",
+          title: "",
+          description: "",
+          memberName: "",
+          gregorianDate: "",
+          hebrewDate: "",
+          icon: "",
+        },
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -118,8 +136,10 @@ const AddEventModal = memo(function AddEventModal({
         hebrewDate:    form.hebrewDate.trim(),
         icon:          form.icon.trim() || meta.icon,
       };
-      const created = await createFamilyTimelineEvent(input);
-      onAdded(created);
+      const saved = initialEvent
+        ? await updateFamilyTimelineEvent(initialEvent.id, input)
+        : await createFamilyTimelineEvent(input);
+      onSaved(saved);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -138,7 +158,7 @@ const AddEventModal = memo(function AddEventModal({
         className="modal-sheet"
         role="dialog"
         aria-modal="true"
-        aria-label="Add family event"
+        aria-label={isEditing ? t.familyTimelineEditTitle : "Add family event"}
         onClick={(e) => e.stopPropagation()}
         style={{ maxHeight: "90vh", overflowY: "auto" }}
       >
@@ -151,7 +171,7 @@ const AddEventModal = memo(function AddEventModal({
         }}>
           <div>
             <div style={{ fontSize: 20, fontWeight: 800 }}>
-              {meta.icon} Add Family Event
+              {meta.icon} {isEditing ? t.familyTimelineEditTitle : "Add Family Event"}
             </div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
               Preserve your family's precious moments
@@ -328,7 +348,13 @@ const AddEventModal = memo(function AddEventModal({
               opacity: saving ? 0.6 : 1,
             }}
           >
-            {saving ? "Saving…" : "✨ Add to Family Timeline"}
+            {saving
+              ? isEditing
+                ? t.familyTimelineSavingChanges
+                : "Saving…"
+              : isEditing
+                ? t.familyTimelineSaveChanges
+                : "✨ Add to Family Timeline"}
           </button>
         </form>
       </div>
@@ -340,12 +366,15 @@ const AddEventModal = memo(function AddEventModal({
 const DetailModal = memo(function DetailModal({
   event,
   onClose,
+  onEdit,
   onDelete,
 }: {
   event: FamilyTimelineEvent;
   onClose: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useLanguage();
   const meta = EVENT_META[event.eventType] ?? EVENT_META.milestone;
   const [deleting, setDeleting] = useState(false);
 
@@ -475,6 +504,18 @@ const DetailModal = memo(function DetailModal({
               🔗 View Details
             </a>
           )}
+          <button
+            type="button"
+            onClick={onEdit}
+            style={{
+              flex: event.detailsUrl ? "0 0 auto" : 1,
+              padding: "11px 16px", borderRadius: 12,
+              background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.35)",
+              color: "#d4a843", fontSize: 13, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            {t.familyTimelineEditEvent}
+          </button>
           <button
             type="button"
             onClick={handleDelete}
@@ -694,6 +735,7 @@ const FamilyTimeline = memo(function FamilyTimeline({ isSignedIn }: FamilyTimeli
   const [searchInput,    setSearchInput]    = useState("");
   const [showAdd,        setShowAdd]        = useState(false);
   const [selectedEvent,  setSelectedEvent]  = useState<FamilyTimelineEvent | null>(null);
+  const [editingEvent,   setEditingEvent]   = useState<FamilyTimelineEvent | null>(null);
 
   const LIMIT = 20;
   const observerRef = useRef<HTMLDivElement | null>(null);
@@ -764,6 +806,12 @@ const FamilyTimeline = memo(function FamilyTimeline({ isSignedIn }: FamilyTimeli
   function handleEventAdded(ev: FamilyTimelineEvent) {
     setEvents((prev) => [ev, ...prev]);
     setTotal((t) => t + 1);
+  }
+
+  function handleEventUpdated(ev: FamilyTimelineEvent) {
+    setEvents((prev) => prev.map((current) => current.id === ev.id ? ev : current));
+    setSelectedEvent(ev);
+    void load(1, filter, search);
   }
 
   function handleEventDeleted(id: string) {
@@ -1003,7 +1051,7 @@ const FamilyTimeline = memo(function FamilyTimeline({ isSignedIn }: FamilyTimeli
       {showAdd && (
         <AddEventModal
           onClose={() => setShowAdd(false)}
-          onAdded={handleEventAdded}
+          onSaved={handleEventAdded}
         />
       )}
 
@@ -1012,7 +1060,17 @@ const FamilyTimeline = memo(function FamilyTimeline({ isSignedIn }: FamilyTimeli
         <DetailModal
           event={selectedEvent}
           onClose={() => setSelectedEvent(null)}
+          onEdit={() => setEditingEvent(selectedEvent)}
           onDelete={() => handleEventDeleted(selectedEvent.id)}
+        />
+      )}
+
+      {editingEvent && (
+        <AddEventModal
+          key={editingEvent.id}
+          initialEvent={editingEvent}
+          onClose={() => setEditingEvent(null)}
+          onSaved={handleEventUpdated}
         />
       )}
     </>

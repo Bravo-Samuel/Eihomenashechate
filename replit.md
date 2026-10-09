@@ -1,5 +1,18 @@
 # Menashe Calendar
 
+## Running this import on Replit
+
+Install dependencies from the repository root with `pnpm install --frozen-lockfile`, then use the **Run** button (`Project`) to launch the existing managed workflows:
+
+- Web: `pnpm --filter @workspace/menashe-calendar run dev`
+- API: `pnpm --filter @workspace/api-server run dev`
+- Mobile: `pnpm --filter @workspace/menashe-mobile run dev`
+- Design sandbox: `pnpm --filter @workspace/mockup-sandbox run dev`
+
+Import verification on 2026-10-10: all four workflows started; the web preview rendered the Shabbat welcome screen with no browser console errors; `/api/healthz` returned `{"status":"ok"}`; `/api/books` returned database-backed records; Android bundle export succeeded using `pnpm --filter @workspace/menashe-mobile exec expo export --platform android --output-dir /tmp/menashe-import-android-check`.
+
+Supabase web authentication and the mobile Clerk publishable key are configured in the imported environment. Signed-in screens and native-device interaction were not verified. Expo reports existing dependency compatibility warnings. AI chat, payments, and web push remain unavailable until their respective credentials are configured securely; no placeholder credentials were added.
+
 
 ## Setup Status (as of 2026-10-07)
 

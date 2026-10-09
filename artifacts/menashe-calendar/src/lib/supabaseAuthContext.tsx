@@ -9,6 +9,10 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 
+import {
+  safeSignUpDiagnostic,
+  safeThrownSignUpDiagnostic,
+} from "./authErrors";
 import { isSupabaseConfigured, supabase } from "./supabase";
 
 export type AuthUser = {
@@ -26,6 +30,8 @@ export type AuthUser = {
 
 type AuthActionResult = {
   error: string | null;
+  errorCode?: string | null;
+  errorStatus?: number | null;
   requiresConfirmation?: boolean;
 };
 
@@ -192,7 +198,25 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const signUp = useCallback(
     async (email: string, password: string): Promise<AuthActionResult> => {
       if (!supabase) return { error: "migration_unavailable" };
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      let response: Awaited<ReturnType<typeof supabase.auth.signUp>>;
+      try {
+        response = await supabase.auth.signUp({ email, password });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn(
+            "[auth] Supabase sign-up request threw",
+            safeThrownSignUpDiagnostic(error),
+          );
+        }
+        throw error;
+      }
+      const { data, error } = response;
+      if (error && import.meta.env.DEV) {
+        console.warn(
+          "[auth] Supabase sign-up was rejected",
+          safeSignUpDiagnostic(error.code, error.status),
+        );
+      }
       if (!error && data.session) {
         const result = await syncSession(data.session);
         if (result === "unavailable") {
@@ -201,6 +225,8 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       }
       return {
         error: error?.message ?? null,
+        errorCode: error?.code ?? null,
+        errorStatus: error?.status ?? null,
         requiresConfirmation: !error && !data.session,
       };
     },

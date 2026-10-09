@@ -1,6 +1,12 @@
 export type Lang = "en" | "tk";
 
 export interface Translations {
+  /* ── Family Timeline ── */
+  familyTimelineEditEvent: string;
+  familyTimelineEditTitle: string;
+  familyTimelineSaveChanges: string;
+  familyTimelineSavingChanges: string;
+
   /* ── Landing ── */
   landingBadge: string;
   landingHero: string;
@@ -794,6 +800,11 @@ export interface Translations {
    ENGLISH
 ────────────────────────────────────────────────────────────── */
 export const en: Translations = {
+  familyTimelineEditEvent: "Edit event",
+  familyTimelineEditTitle: "Edit Family Event",
+  familyTimelineSaveChanges: "Save Changes",
+  familyTimelineSavingChanges: "Saving changes…",
+
   landingBadge: "BNEI MENASHE",
   landingHero: "The Sacred Calendar\nof Bnei Menashe",
   landingSubtitle: "Accurate Zmanim, Torah wisdom, Jewish holidays, and community resources — all in one spiritual home.",
@@ -1564,6 +1575,11 @@ export const en: Translations = {
    THADOU KUKI  (community can correct via the in-app editor)
 ────────────────────────────────────────────────────────────── */
 export const tk: Translations = {
+  familyTimelineEditEvent: "Thilthleng siam danglam",
+  familyTimelineEditTitle: "Chhungkua thilthleng siam danglam",
+  familyTimelineSaveChanges: "Danglamna vawng rawh",
+  familyTimelineSavingChanges: "Vawng mek…",
+
   landingBadge: "BNEI MENASHE",
   landingHero: "Bnei Menashe Gil\nNi Thu Leh Thla",
   landingSubtitle: "Zmanim chiang tak, Torah thu, ni thianghlim leh mipil thupek — inn khat ah phung.",

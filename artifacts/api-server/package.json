@@ -11,6 +11,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:notifications": "tsx --test src/lib/webNotificationJobs.test.ts",
+    "test:family-timeline": "tsx --test src/routes/familyTimeline.test.ts",
     "test:security": "tsx --test src/lib/productionReadiness.test.ts src/lib/supabaseAuth.test.ts"
   },
   "dependencies": {

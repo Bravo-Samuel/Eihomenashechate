@@ -1,0 +1,395 @@
+You are the senior full-stack engineer responsible for repairing and production-hardening this Menashe Calendar application.
+
+IMPORTANT:
+Do NOT blindly rewrite the application.
+Do NOT remove existing authentication logic.
+Do NOT replace Supabase authentication with a different system.
+Do NOT disable validation just to make the build pass.
+Do NOT use localhost, Replit development URLs, placeholders, or temporary URLs for production.
+Do NOT make destructive changes.
+
+OBJECTIVE
+
+Fix the current frontend/API architecture so that:
+
+1. Local Replit development works.
+2. The production Netlify build works.
+3. /api/auth/user works correctly.
+4. Supabase authentication remains intact.
+5. The application does not depend on localhost in production.
+6. NETLIFY_API_URL is handled correctly.
+7. The existing Vite configuration remains clean and maintainable.
+8. The final build passes typecheck and production build.
+9. No existing application features are unnecessarily removed.
+
+CURRENT PROBLEM
+
+The project currently contains:
+
+src/lib/supabaseAuthContext.tsx
+
+with:
+
+fetch("/api/auth/user", ...)
+
+The current vite.config.ts contains an API target similar to:
+
+const apiTarget =
+  process.env.API_URL ?? "http://localhost:8080";
+
+and production validation around:
+
+NETLIFY_API_URL
+
+The Vite configuration also creates a production Netlify redirect:
+
+/api/*  ${apiUrl}/api/:splat  200
+
+The project currently appears to contain a Vite/React frontend but no obvious backend server startup script or obvious Express/Fastify API implementation.
+
+Therefore, DO NOT assume that the API server exists.
+
+FIRST: AUDIT THE PROJECT
+
+Before modifying anything, inspect:
+
+- package.json
+- vite.config.ts
+- tsconfig.json
+- .env / .env.example / environment configuration
+- src/lib/supabaseAuthContext.tsx
+- all files under src/
+- all API-related files
+- all server/backend-related files
+- Git branches
+- Git history
+- package dependencies
+- deployment configuration
+- Netlify configuration
+- Replit configuration
+
+Search for:
+
+/api/auth/user
+/api/*
+auth/user
+express(
+fastify(
+createServer(
+app.get(
+app.post(
+router.get(
+router.post(
+NETLIFY_API_URL
+API_URL
+SUPABASE
+supabase
+server
+backend
+api
+
+Also inspect Git history and branches to determine whether a backend/API previously existed and was removed or moved.
+
+DO NOT assume the absence of a backend until Git history and branches have been checked.
+
+ARCHITECTURE DECISION
+
+After auditing, determine which of these situations applies:
+
+A. A backend already exists in this repository.
+
+B. A backend exists in another Git branch/history.
+
+C. The backend is deployed externally and only the frontend configuration is wrong.
+
+D. No backend exists and the application was incorrectly designed to depend on /api/auth/user.
+
+If A/B/C applies:
+PRESERVE the existing architecture and repair the connection.
+
+If D applies:
+DO NOT invent a random backend.
+
+Instead, determine whether /api/auth/user can safely be removed/replaced with the application's existing Supabase client/authentication architecture.
+
+Only make this architectural change after confirming that no required backend functionality exists.
+
+AUTHENTICATION REQUIREMENTS
+
+Inspect src/lib/supabaseAuthContext.tsx carefully.
+
+Determine exactly why it calls:
+
+fetch("/api/auth/user")
+
+Determine whether this endpoint is:
+
+- required for session validation,
+- required for profile loading,
+- required for managed authentication,
+- or leftover/obsolete code.
+
+Do not remove the call merely because it causes a build/runtime problem.
+
+If the endpoint is required, make sure a real production API exists.
+
+If authentication can correctly operate using the existing Supabase client without this API endpoint, refactor it safely to use the existing Supabase architecture.
+
+Do not expose Supabase service-role keys or other private credentials to the browser.
+
+ENVIRONMENT REQUIREMENTS
+
+Create or update an appropriate .env.example documenting variables such as:
+
+API_URL
+NETLIFY_API_URL
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+
+Only include variables that are actually required after auditing the code.
+
+Development may use:
+
+API_URL=http://localhost:8080
+
+ONLY if a real local API server exists and is started by the development workflow.
+
+Production MUST NOT use:
+
+localhost
+127.0.0.1
+0.0.0.0
+Replit preview URLs
+temporary development URLs
+embedded credentials
+placeholder domains
+
+Production NETLIFY_API_URL must be a real HTTPS origin of the deployed API server.
+
+Do not hard-code a fake API URL.
+
+VITE CONFIGURATION
+
+Review vite.config.ts.
+
+Keep the following principles:
+
+Development:
+- Vite frontend runs normally.
+- /api requests may proxy to a real local API server if one exists.
+
+Production:
+- Netlify serves the frontend.
+- /api requests must route to the real production API.
+- The API URL must come from environment configuration.
+- Do not silently fall back to localhost during a production build.
+
+The existing validation is useful, but improve it so it is:
+
+- deterministic
+- readable
+- correctly scoped to production
+- not duplicated unnecessarily
+- free from contradictory validation logic
+
+If NETLIFY_API_URL is required for production, fail with ONE clear actionable message.
+
+Example:
+
+"NETLIFY_API_URL is required for production Netlify builds. Set it to the HTTPS origin of the deployed production API server."
+
+Do not print multiple contradictory errors for the same variable.
+
+NETLIFY REDIRECT
+
+If the production API exists, preserve the intended redirect:
+
+/api/* -> ${NETLIFY_API_URL}/api/:splat
+
+with HTTP 200 rewrite behavior.
+
+Ensure the generated Netlify _redirects file is syntactically valid.
+
+Do not generate a redirect to localhost.
+
+Do not create a redirect to a placeholder.
+
+If no backend exists, do NOT generate a broken /api proxy.
+
+Instead, fix the application architecture so the frontend does not make impossible API requests.
+
+SUPABASE
+
+Audit the existing Supabase integration.
+
+Confirm:
+
+- Supabase URL is supplied through the correct public frontend environment variable.
+- Supabase anon/publishable key is safe for frontend use.
+- No service-role key is exposed to Vite/client code.
+- Auth session persistence works.
+- Login/logout/session refresh still work.
+- Existing database functionality is preserved.
+
+DO NOT change database schema unless absolutely necessary.
+
+DO NOT delete existing Supabase code simply to remove errors.
+
+PACKAGE.JSON
+
+Review package.json.
+
+If a backend exists, ensure there is an appropriate development/start command.
+
+For example, only if appropriate to the actual backend:
+
+"server": "...",
+"dev": "...",
+
+Do not add fake scripts.
+
+If there is no backend, do not create an empty server script just to satisfy the configuration.
+
+BUILD VALIDATION
+
+After making the minimum necessary changes, run:
+
+npm install
+
+then:
+
+npm run typecheck
+
+then:
+
+npm run build
+
+If package manager detection shows pnpm or another package manager is actually being used, use the existing project's package manager instead of switching unnecessarily.
+
+Then inspect the generated build output.
+
+Verify that:
+
+- build completes successfully
+- no TypeScript errors remain
+- no broken imports remain
+- no localhost production API references remain
+- no Replit development URL is embedded in production output
+- no placeholder NETLIFY_API_URL remains
+- Netlify _redirects is valid if required
+- assets resolve correctly
+
+RUNTIME TESTING
+
+Start the application using the existing project workflow.
+
+Test:
+
+1. Home page
+2. Login
+3. Logout
+4. Session restoration
+5. Authenticated page
+6. Calendar
+7. Zmanim
+8. Siddur
+9. Settings
+10. Memorial
+11. Any feature that uses authenticated API calls
+
+Specifically test:
+
+GET /api/auth/user
+
+if that endpoint is supposed to exist.
+
+If it does not exist and should not exist after the architecture correction, verify that no frontend code still calls it.
+
+SEARCH AFTER FIX
+
+Run a final search for:
+
+localhost:8080
+127.0.0.1
+0.0.0.0
+NETLIFY_API_URL
+API_URL
+/api/auth/user
+Replit development URLs
+
+Classify every remaining occurrence as:
+
+- legitimate development configuration
+- legitimate production configuration
+- documentation
+- source code that still needs fixing
+
+Do not remove legitimate development references.
+
+PRODUCTION SAFETY
+
+Before finishing, verify:
+
+- No secrets committed to source code.
+- No Supabase service-role key in client code.
+- No API credentials embedded in URLs.
+- No fake production URL.
+- No localhost production fallback.
+- No broken Netlify rewrite.
+- No unnecessary dependency upgrades.
+- No unrelated UI changes.
+- No deletion of existing application features.
+
+GIT SAFETY
+
+Before making major changes:
+
+Create a checkpoint commit if Git is available:
+
+"checkpoint: before API architecture repair"
+
+After successful repair, create a second commit:
+
+"fix: repair production API configuration and authentication flow"
+
+Do not force-push.
+Do not reset or delete existing branches.
+Do not rewrite unrelated history.
+
+FINAL REPORT
+
+When finished, provide a concise engineering report containing:
+
+1. Root cause.
+2. What was wrong with /api/auth/user.
+3. Whether a backend existed.
+4. Whether Git history contained a previous backend.
+5. What files were changed.
+6. Exact environment variables required for development.
+7. Exact environment variables required for production.
+8. Whether NETLIFY_API_URL is still required.
+9. Whether Netlify /api redirects are still required.
+10. Build result.
+11. Typecheck result.
+12. Authentication test result.
+13. Any remaining manual deployment step.
+
+IMPORTANT FINAL RULE:
+
+DO NOT CLAIM THE PROBLEM IS FIXED UNTIL:
+
+npm run typecheck
+
+and
+
+npm run build
+
+both succeed, and the resulting application has been tested for the authentication flow.
+
+If the production API URL cannot be determined from the repository, Git history, or existing deployment configuration, STOP before inventing one.
+
+Instead report:
+
+"Production API endpoint is not discoverable from the current project. The frontend is ready, but NETLIFY_API_URL must be supplied with the real HTTPS origin of the deployed API."
+
+Then tell me exactly where I need to enter that value.

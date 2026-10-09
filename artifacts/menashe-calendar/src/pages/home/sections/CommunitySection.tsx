@@ -1,15 +1,12 @@
 import { useState, useEffect } from "react";
 import { useLanguage } from "../../../context/LanguageContext";
-import { MEMBER_DIR_KEY } from "../data";
 import { daysUntilAnniversary } from "../utils";
+import { fetchDirectory } from "../../../lib/directoryApi";
+import { buildUpcomingCelebrations } from "../../../lib/upcomingCelebrations";
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
-interface CelebEntry {
-  id: string; name: string; role: string; country: string;
-  whatsapp?: string; email?: string; phone?: string;
-  type: "birthday" | "aliyah"; days: number;
-}
+type CelebEntry = ReturnType<typeof buildUpcomingCelebrations>[number];
 
 /* ── CountdownChip ─────────────────────────────────────────────────────── */
 
@@ -46,29 +43,19 @@ function UpcomingCelebrations({ onShowMembers }: { onShowMembers: () => void }) 
   const [celebs, setCelebs] = useState<CelebEntry[]>([]);
 
   useEffect(() => {
-    function load() {
-      try {
-        const raw = localStorage.getItem(MEMBER_DIR_KEY);
-        const members = raw ? JSON.parse(raw) : [];
-        const found: CelebEntry[] = [];
-        for (const m of members) {
-          if (m.status !== "approved") continue;
-          if (m.birthday) {
-            const days = daysUntilAnniversary(m.birthday);
-            if (days >= 0 && days <= 7) found.push({ id: m.id, name: m.name, role: m.role, country: m.country, whatsapp: m.whatsapp, email: m.email, phone: m.phone, type: "birthday", days });
-          }
-          if (m.aliyahDate) {
-            const days = daysUntilAnniversary(m.aliyahDate);
-            if (days >= 0 && days <= 7) found.push({ id: m.id + "-al", name: m.name, role: m.role, country: m.country, whatsapp: m.whatsapp, email: m.email, phone: m.phone, type: "aliyah", days });
-          }
+    let active = true;
+    void fetchDirectory()
+      .then((members) => {
+        if (active) {
+          setCelebs(buildUpcomingCelebrations(members, daysUntilAnniversary));
         }
-        found.sort((a, b) => a.days - b.days);
-        setCelebs(found);
-      } catch {}
-    }
-    load();
-    window.addEventListener("storage", load);
-    return () => window.removeEventListener("storage", load);
+      })
+      .catch(() => {
+        if (active) setCelebs([]);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (celebs.length === 0) return null;

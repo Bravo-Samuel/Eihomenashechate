@@ -1,6 +1,10 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useLanguage } from "./context/LanguageContext";
-import { classifySignUpError } from "./lib/authErrors";
+import {
+  classifySignUpError,
+  safeThrownSignUpDiagnostic,
+  type SignUpDiagnostic,
+} from "./lib/authErrors";
 import { requireAuthContext } from "./lib/supabaseAuthContext";
 
 const authCopy = {
@@ -57,6 +61,7 @@ const authCopy = {
       "We couldn't verify this request. Refresh the page and try again.",
     providerUnavailable:
       "Account creation is temporarily unavailable. Please try again shortly.",
+    devDiagnosticLabel: "Development diagnostic",
     genericError: "We couldn't complete that request. Please try again.",
     confirmationTitle: "Check your email",
     confirmationBody:
@@ -116,6 +121,7 @@ const authCopy = {
       "Bu haýyşy tassyklap bilmedik. Sahypany täzeläp, täzeden synanyşyň.",
     providerUnavailable:
       "Hasap açmak wagtlaýyn elýeterli däl. Az salymdan täzeden synanyşyň.",
+    devDiagnosticLabel: "Öndüriji anyklaýyş maglumatlary",
     genericError: "Talaby ýerine ýetirip bilmedik. Täzeden synanyşyň.",
     confirmationTitle: "E-poçtaňyzy barlaň",
     confirmationBody:
@@ -229,12 +235,14 @@ function AuthForm({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [diagnostic, setDiagnostic] = useState<SignUpDiagnostic | null>(null);
   const [confirmationSent, setConfirmationSent] = useState(false);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (busy) return;
     setError(null);
+    setDiagnostic(null);
 
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail || !password) {
@@ -257,6 +265,9 @@ function AuthForm({
           ? await signIn(normalizedEmail, password)
           : await signUp(normalizedEmail, password);
       if (result.error) {
+        if (mode === "sign-up" && import.meta.env.DEV && result.diagnostic) {
+          setDiagnostic(result.diagnostic);
+        }
         setError(
           mode === "sign-up"
             ? friendlySignUpError(
@@ -276,8 +287,13 @@ function AuthForm({
         return;
       }
       window.location.assign(returnTo);
-    } catch {
+    } catch (caught) {
       setError(copy.genericError);
+      if (mode === "sign-up" && import.meta.env.DEV) {
+        const safeDiagnostic = safeThrownSignUpDiagnostic(caught);
+        console.warn("SIGNUP_FAILED", safeDiagnostic);
+        setDiagnostic(safeDiagnostic);
+      }
     } finally {
       setBusy(false);
     }
@@ -342,7 +358,26 @@ function AuthForm({
       )}
       {error && (
         <div role="alert" className="auth-error">
-          {error}
+          <div>{error}</div>
+          {diagnostic && mode === "sign-up" && import.meta.env.DEV && (
+            <div
+              data-testid="signup-diagnostic"
+              style={{
+                marginTop: 8,
+                padding: "8px 10px",
+                borderRadius: 8,
+                background: "rgba(0,0,0,0.18)",
+                fontSize: 11,
+                lineHeight: 1.5,
+                overflowWrap: "anywhere",
+              }}
+            >
+              <strong>{copy.devDiagnosticLabel}</strong>
+              <pre style={{ margin: "4px 0 0", whiteSpace: "pre-wrap" }}>
+                {"SIGNUP_FAILED " + JSON.stringify(diagnostic, null, 2)}
+              </pre>
+            </div>
+          )}
         </div>
       )}
       <button

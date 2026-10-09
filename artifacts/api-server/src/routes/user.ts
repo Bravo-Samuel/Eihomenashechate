@@ -99,7 +99,7 @@ router.put("/user/profile", requireAuth, async (req, res) => {
   if (!parsed.success) {
     return apiError.badRequest(res, "Invalid profile data", parsed.error.issues);
   }
-  const { theme, location, candleEnabled, language, notifPrefs, leadTime } = parsed.data;
+  const data = parsed.data;
   // isPremium is intentionally NOT accepted here — premium status is controlled
   // exclusively by admin routes (/admin/users/:id/premium) and payment verification.
   const client = await pool.connect();
@@ -108,21 +108,27 @@ router.put("/user/profile", requireAuth, async (req, res) => {
       `INSERT INTO user_profiles (user_id, theme, location, candle_enabled, language, notif_prefs, lead_time, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
        ON CONFLICT (user_id) DO UPDATE SET
-         theme = EXCLUDED.theme,
-         location = EXCLUDED.location,
-         candle_enabled = EXCLUDED.candle_enabled,
-         language = EXCLUDED.language,
-         notif_prefs = EXCLUDED.notif_prefs,
-         lead_time = EXCLUDED.lead_time,
+         theme = CASE WHEN $8::boolean THEN EXCLUDED.theme ELSE user_profiles.theme END,
+         location = CASE WHEN $9::boolean THEN EXCLUDED.location ELSE user_profiles.location END,
+         candle_enabled = CASE WHEN $10::boolean THEN EXCLUDED.candle_enabled ELSE user_profiles.candle_enabled END,
+         language = CASE WHEN $11::boolean THEN EXCLUDED.language ELSE user_profiles.language END,
+         notif_prefs = CASE WHEN $12::boolean THEN EXCLUDED.notif_prefs ELSE user_profiles.notif_prefs END,
+         lead_time = CASE WHEN $13::boolean THEN EXCLUDED.lead_time ELSE user_profiles.lead_time END,
          updated_at = NOW()`,
       [
         userId,
-        theme ?? "dark",
-        location ? JSON.stringify(location) : null,
-        candleEnabled ?? true,
-        language ?? "en",
-        notifPrefs ? JSON.stringify(notifPrefs) : null,
-        leadTime ?? 10,
+        data.theme ?? "dark",
+        data.location == null ? null : JSON.stringify(data.location),
+        data.candleEnabled ?? true,
+        data.language ?? "en",
+        data.notifPrefs == null ? null : JSON.stringify(data.notifPrefs),
+        data.leadTime ?? 10,
+        Object.prototype.hasOwnProperty.call(data, "theme"),
+        Object.prototype.hasOwnProperty.call(data, "location"),
+        Object.prototype.hasOwnProperty.call(data, "candleEnabled"),
+        Object.prototype.hasOwnProperty.call(data, "language"),
+        Object.prototype.hasOwnProperty.call(data, "notifPrefs"),
+        Object.prototype.hasOwnProperty.call(data, "leadTime"),
       ],
     );
     return res.json({ ok: true });

@@ -14,6 +14,10 @@ import {
   fetchPublicProfile,
   type PublicProfile,
 } from "./lib/userApi";
+import {
+  isProfileSyncedForUser,
+  shouldResetProfileForUser,
+} from "./lib/profileSync";
 import { LanguageProvider } from "./context/LanguageContext";
 import BottomNav from "./components/BottomNav";
 import { LOCATIONS, type Location } from "./lib/locations";
@@ -33,6 +37,7 @@ const InstallPrompt = lazy(() => import("./components/InstallPrompt"));
 const ShabbatBanner = lazy(() => import("./components/ShabbatBanner"));
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const PROFILE_USER_ID_KEY = "menashe-profile-user-id";
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
@@ -60,7 +65,9 @@ export default function AppShell() {
   const { user, isLoaded: userLoaded } = useUser();
   const { membership } = useOrganization();
   const { signOut } = useAuthActions();
-  const profileSyncedRef = useRef(false);
+  const profileRequestUserIdRef = useRef<string | null>(null);
+  const profileSyncedUserIdRef = useRef<string | null>(null);
+  const profileOwnerUserIdRef = useRef<string | null>(null);
   const [publicProfile, setPublicProfile] = useState<PublicProfile | null>(null);
   const [activePage, setActivePage] = useState<Page>(() => {
     const p = shortcutPageFromPath(stripBase(window.location.pathname));
@@ -85,13 +92,7 @@ export default function AppShell() {
     } catch {}
     return LOCATIONS[0];
   });
-  const [isPremium, setIsPremium] = useState(() => {
-    try {
-      return localStorage.getItem("menashe-is-premium") === "true";
-    } catch {
-      return false;
-    }
-  });
+  const [isPremium, setIsPremium] = useState(false);
   const [navCollapsed, setNavCollapsed] = useState(() => {
     try {
       return localStorage.getItem("menashe-nav-collapsed") === "true";
@@ -101,25 +102,85 @@ export default function AppShell() {
   });
 
   useEffect(() => {
-    if (!userLoaded || !user) return;
-    void fetchPublicProfile().then((p) => {
-      if (p) setPublicProfile(p);
+    if (!userLoaded) return;
+    if (!user) {
+      profileRequestUserIdRef.current = null;
+      profileSyncedUserIdRef.current = null;
+      setPublicProfile(null);
+      setIsPremium(false);
+      try {
+        localStorage.removeItem("menashe-is-premium");
+      } catch {}
+      return;
+    }
+
+    const userId = user.id;
+    let active = true;
+    profileRequestUserIdRef.current = userId;
+    profileSyncedUserIdRef.current = null;
+    setPublicProfile(null);
+    void fetchPublicProfile().then((profile) => {
+      if (active && profileRequestUserIdRef.current === userId) {
+        setPublicProfile(profile);
+      }
     });
+
+    return () => {
+      active = false;
+      if (profileRequestUserIdRef.current === userId) {
+        profileRequestUserIdRef.current = null;
+      }
+      if (profileSyncedUserIdRef.current === userId) {
+        profileSyncedUserIdRef.current = null;
+      }
+    };
   }, [userLoaded, user?.id]);
 
   useEffect(() => {
-    if (!userLoaded || !user) return;
+    if (!userLoaded) return;
+    if (!user) {
+      profileRequestUserIdRef.current = null;
+      profileSyncedUserIdRef.current = null;
+      return;
+    }
+
+    const userId = user.id;
+    let active = true;
+    profileRequestUserIdRef.current = userId;
+    profileSyncedUserIdRef.current = null;
+
+    let previousUserId = profileOwnerUserIdRef.current;
+    if (!previousUserId) {
+      try {
+        previousUserId = localStorage.getItem(PROFILE_USER_ID_KEY);
+      } catch {}
+    }
+    const switchedAccount = shouldResetProfileForUser(previousUserId, userId);
+    if (switchedAccount) {
+      setThemeState("dark");
+      setLocation(LOCATIONS[0]);
+      setIsPremium(false);
+      try {
+        localStorage.setItem("menashe-theme", "dark");
+        localStorage.setItem("menashe-location", JSON.stringify(LOCATIONS[0]));
+      } catch {}
+    }
+
     void fetchUserProfile().then((profile) => {
-      if (!profile) {
-        profileSyncedRef.current = true;
+      if (
+        !active ||
+        profileRequestUserIdRef.current !== userId ||
+        !profile
+      ) {
         return;
       }
-      if (profile.theme) {
-        setThemeState(profile.theme);
-        try {
-          localStorage.setItem("menashe-theme", profile.theme);
-        } catch {}
-      }
+
+      const nextTheme = profile.theme || "dark";
+      setThemeState(nextTheme);
+      try {
+        localStorage.setItem("menashe-theme", nextTheme);
+      } catch {}
+
       if (profile.location) {
         setLocation(profile.location);
         try {
@@ -129,20 +190,38 @@ export default function AppShell() {
           );
         } catch {}
       }
-      if (profile.isPremium) {
-        setIsPremium(true);
-        try {
-          localStorage.setItem("menashe-is-premium", "true");
-        } catch {}
-      }
-      profileSyncedRef.current = true;
+
+      const nextPremium = profile.isPremium === true;
+      setIsPremium(nextPremium);
+      try {
+        localStorage.removeItem("menashe-is-premium");
+        localStorage.setItem(PROFILE_USER_ID_KEY, userId);
+      } catch {}
+
+      profileOwnerUserIdRef.current = userId;
+      profileSyncedUserIdRef.current = userId;
     });
+
+    return () => {
+      active = false;
+      if (profileRequestUserIdRef.current === userId) {
+        profileRequestUserIdRef.current = null;
+      }
+      if (profileSyncedUserIdRef.current === userId) {
+        profileSyncedUserIdRef.current = null;
+      }
+    };
   }, [userLoaded, user?.id]);
 
   useEffect(() => {
-    if (!profileSyncedRef.current) return;
-    void saveUserProfile({ theme, location, isPremium });
-  }, [theme, location, isPremium]);
+    if (
+      !userLoaded ||
+      !isProfileSyncedForUser(profileSyncedUserIdRef.current, user?.id)
+    ) {
+      return;
+    }
+    void saveUserProfile({ theme, location });
+  }, [userLoaded, user?.id, theme, location]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);

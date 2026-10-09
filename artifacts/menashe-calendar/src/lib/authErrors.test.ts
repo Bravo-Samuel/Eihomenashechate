@@ -45,20 +45,36 @@ test("keeps unrecognized provider errors on the generic path", () => {
   );
 });
 
-test("sign-up diagnostics only include validated code and HTTP status", () => {
+test("sign-up diagnostics classify errors and expose only validated metadata", () => {
   assert.deepEqual(
-    safeSignUpDiagnostic("EMAIL_ADDRESS_NOT_AUTHORIZED", 422),
+    safeSignUpDiagnostic(
+      "EMAIL_ADDRESS_NOT_AUTHORIZED",
+      422,
+      "Address private@example.com rejected",
+    ),
     {
       operation: "sign-up",
+      type: "provider_rejection",
+      category: "email-restricted",
+      message: "Supabase rejected the sign-up request.",
       code: "email_address_not_authorized",
       status: 422,
     },
   );
-  assert.deepEqual(safeSignUpDiagnostic("secret\nvalue", 700), {
-    operation: "sign-up",
-  });
+  assert.deepEqual(
+    safeSignUpDiagnostic("secret\nvalue", 700, "password private-value"),
+    {
+      operation: "sign-up",
+      type: "provider_rejection",
+      category: "unknown",
+      message: "Supabase rejected the sign-up request.",
+    },
+  );
   assert.deepEqual(safeSignUpDiagnostic(undefined, Number.NaN), {
     operation: "sign-up",
+    type: "provider_rejection",
+    category: "unknown",
+    message: "Supabase rejected the sign-up request.",
   });
 });
 
@@ -67,13 +83,15 @@ test("thrown diagnostics never serialize exception details", () => {
     safeThrownSignUpDiagnostic(new TypeError("private request details")),
     {
       operation: "sign-up",
-      failure: "thrown",
-      errorClass: "TypeError",
+      type: "request_failure",
+      category: "request-failure",
+      message: "No provider response was received for the sign-up request.",
     },
   );
   assert.deepEqual(safeThrownSignUpDiagnostic("private value"), {
     operation: "sign-up",
-    failure: "thrown",
-    errorClass: "Unknown",
+    type: "request_failure",
+    category: "request-failure",
+    message: "No provider response was received for the sign-up request.",
   });
 });

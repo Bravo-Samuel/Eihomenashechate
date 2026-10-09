@@ -12,6 +12,7 @@ import type { Session } from "@supabase/supabase-js";
 import {
   safeSignUpDiagnostic,
   safeThrownSignUpDiagnostic,
+  type SignUpDiagnostic,
 } from "./authErrors";
 import { isSupabaseConfigured, supabase } from "./supabase";
 
@@ -33,6 +34,7 @@ type AuthActionResult = {
   errorCode?: string | null;
   errorStatus?: number | null;
   requiresConfirmation?: boolean;
+  diagnostic?: SignUpDiagnostic;
 };
 
 type AuthContextValue = {
@@ -202,20 +204,18 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       try {
         response = await supabase.auth.signUp({ email, password });
       } catch (error) {
+        const diagnostic = safeThrownSignUpDiagnostic(error);
         if (import.meta.env.DEV) {
-          console.warn(
-            "[auth] Supabase sign-up request threw",
-            safeThrownSignUpDiagnostic(error),
-          );
+          console.warn("SIGNUP_FAILED", diagnostic);
         }
-        throw error;
+        return { error: "signup_request_failed", diagnostic };
       }
       const { data, error } = response;
+      const diagnostic = error
+        ? safeSignUpDiagnostic(error.code, error.status, error.message)
+        : undefined;
       if (error && import.meta.env.DEV) {
-        console.warn(
-          "[auth] Supabase sign-up was rejected",
-          safeSignUpDiagnostic(error.code, error.status),
-        );
+        console.warn("SIGNUP_FAILED", diagnostic);
       }
       if (!error && data.session) {
         const result = await syncSession(data.session);
@@ -228,6 +228,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         errorCode: error?.code ?? null,
         errorStatus: error?.status ?? null,
         requiresConfirmation: !error && !data.session,
+        diagnostic,
       };
     },
     [syncSession],

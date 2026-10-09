@@ -15,6 +15,15 @@ export type SignUpErrorDetails = {
   message?: unknown;
 };
 
+export type SignUpDiagnostic = {
+  operation: "sign-up";
+  type: "provider_rejection" | "request_failure";
+  category: SignUpErrorKind | "request-failure";
+  message: string;
+  code?: string;
+  status?: number;
+};
+
 const SAFE_ERROR_CODE = /^[a-z0-9_-]{1,64}$/i;
 
 export function classifySignUpError(
@@ -75,7 +84,8 @@ export function classifySignUpError(
 export function safeSignUpDiagnostic(
   code: unknown,
   status: unknown,
-): { operation: "sign-up"; code?: string; status?: number } {
+  message?: unknown,
+): SignUpDiagnostic {
   const safeCode =
     typeof code === "string" && SAFE_ERROR_CODE.test(code)
       ? code.toLowerCase()
@@ -90,6 +100,13 @@ export function safeSignUpDiagnostic(
 
   return {
     operation: "sign-up",
+    type: "provider_rejection",
+    category: classifySignUpError({
+      code: safeCode,
+      status: safeStatus,
+      message,
+    }),
+    message: "Supabase rejected the sign-up request.",
     ...(safeCode ? { code: safeCode } : {}),
     ...(safeStatus ? { status: safeStatus } : {}),
   };
@@ -97,15 +114,11 @@ export function safeSignUpDiagnostic(
 
 export function safeThrownSignUpDiagnostic(
   error: unknown,
-): { operation: "sign-up"; failure: "thrown"; errorClass: string } {
+): SignUpDiagnostic {
   return {
     operation: "sign-up",
-    failure: "thrown",
-    errorClass:
-      error instanceof TypeError
-        ? "TypeError"
-        : error instanceof Error
-          ? "Error"
-          : "Unknown",
+    type: "request_failure",
+    category: "request-failure",
+    message: "No provider response was received for the sign-up request.",
   };
 }

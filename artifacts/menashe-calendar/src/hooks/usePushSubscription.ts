@@ -10,6 +10,7 @@ import {
   isValidIanaTimeZone,
 } from "../lib/timezone";
 import { getAuthToken } from "../lib/authToken";
+import { requestPushUnsubscribe, requestTestPush } from "../lib/pushApi";
 
 const API_BASE = "/api";
 const SW_KEY = "menashe-push-subscribed";
@@ -60,17 +61,6 @@ async function postSubscription(
   } catch {
     return { ok: false, error: "Could not reach the notification service." };
   }
-}
-
-async function deleteSubscription(endpoint: string): Promise<void> {
-  try {
-      await fetch(`${API_BASE}/push/unsubscribe`, {
-      method: "DELETE",
-        headers: { "Content-Type": "application/json", ...(await authHeaders()) },
-        credentials: "include",
-      body: JSON.stringify({ endpoint }),
-    });
-  } catch {}
 }
 
 export function usePushSubscription(location: Location, prefs: NotificationPrefs, leadTime: LeadTime, userId?: string | null) {
@@ -178,31 +168,57 @@ export function usePushSubscription(location: Location, prefs: NotificationPrefs
 
   const unsubscribe = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const sw = await navigator.serviceWorker.ready;
       const sub = await sw.pushManager.getSubscription();
       if (sub) {
-        await deleteSubscription(sub.endpoint);
-        await sub.unsubscribe();
+        const result = await requestPushUnsubscribe(
+          sub.endpoint,
+          fetch,
+          await getAuthToken(),
+        );
+        if (!result.ok) {
+          setError(result.error ?? "Could not disable push notifications.");
+          return;
+        }
+        const browserUnsubscribed = await sub.unsubscribe();
+        if (!browserUnsubscribed) {
+          setError("The server removed the subscription, but this browser could not disable it.");
+          return;
+        }
       }
       setIsSubscribed(false);
       try { localStorage.removeItem(SW_KEY); } catch {}
-    } catch {}
-    setIsLoading(false);
+    } catch {
+      setError("Could not disable browser notifications. Try again.");
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const sendTest = useCallback(async (): Promise<boolean> => {
-    const sw = await navigator.serviceWorker.ready;
-    const sub = subRef.current ?? await sw.pushManager.getSubscription();
-    if (!sub) return false;
+    setIsLoading(true);
+    setError(null);
     try {
-      const res = await fetch(`${API_BASE}/push/send-test`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(await authHeaders()) },
-        credentials: "include",
-      });
-      return res.ok;
-    } catch { return false; }
+      const sw = await navigator.serviceWorker.ready;
+      const sub = subRef.current ?? await sw.pushManager.getSubscription();
+      if (!sub) {
+        setError("No active browser notification subscription was found.");
+        return false;
+      }
+      const result = await requestTestPush(fetch, await getAuthToken());
+      if (!result.ok) {
+        setError(result.error ?? "Could not send a test notification.");
+        return false;
+      }
+      return true;
+    } catch {
+      setError("Could not send a test notification. Try again.");
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   return { isSubscribed, isSupported, isLoading, error, subscribe, unsubscribe, sendTest };

@@ -166,6 +166,8 @@ const SettingsPage = memo(function SettingsPage({
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminActionId, setAdminActionId] = useState<string | null>(null);
+  const [adminError, setAdminError] = useState<string | null>(null);
+  const [notifActionError, setNotifActionError] = useState<string | null>(null);
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
   const [bulkProcessing, setBulkProcessing] = useState(false);
 
@@ -275,8 +277,17 @@ const SettingsPage = memo(function SettingsPage({
   async function handleNotifToggle(key: keyof NotificationPrefs, value: boolean) {
     if (notifBlocked || notifUnsupported) return;
     setPendingKey(key);
-    await onUpdateNotifPref(key, value);
-    setPendingKey(null);
+    setNotifActionError(null);
+    try {
+      const updated = await onUpdateNotifPref(key, value);
+      if (!updated) {
+        setNotifActionError("Could not save this notification preference. Try again.");
+      }
+    } catch {
+      setNotifActionError("Could not save this notification preference. Try again.");
+    } finally {
+      setPendingKey(null);
+    }
   }
 
   function notifSubtitle(key: keyof NotificationPrefs, defaultText: string): string {
@@ -291,13 +302,18 @@ const SettingsPage = memo(function SettingsPage({
   // ── Admin panel functions ──────────────────────────────────────────────────
   async function fetchAdminData() {
     setAdminLoading(true);
+    setAdminError(null);
     try {
       const [reqRes, usrRes] = await Promise.all([
         adminFetch("/admin/premium-requests"),
         adminFetch("/admin/users"),
       ]);
       if (reqRes.ok) setAdminRequests(await reqRes.json());
+      else setAdminError("Could not load premium requests. Check admin access or connection.");
       if (usrRes.ok) setAdminUsers(await usrRes.json());
+      else setAdminError("Could not load admin users. Check admin access or connection.");
+    } catch {
+      setAdminError("Could not load admin data. Check your connection and try again.");
     } finally {
       setAdminLoading(false);
     }
@@ -305,42 +321,82 @@ const SettingsPage = memo(function SettingsPage({
 
   async function handleApprove(userId: string) {
     setAdminActionId(userId);
-    await adminFetch(`/admin/premium-requests/${userId}/approve`, { method: "PUT" });
-    setAdminRequests(r => r.filter(x => x.userId !== userId));
-    setSelectedRequests(s => { const n = new Set(s); n.delete(userId); return n; });
-    setAdminActionId(null);
+    setAdminError(null);
+    try {
+      const response = await adminFetch(`/admin/premium-requests/${userId}/approve`, { method: "PUT" });
+      if (!response.ok) throw new Error("Request failed");
+      setAdminRequests(r => r.filter(x => x.userId !== userId));
+      setSelectedRequests(s => { const n = new Set(s); n.delete(userId); return n; });
+    } catch {
+      setAdminError("Could not approve this request. It is still pending; retry when connected.");
+    } finally {
+      setAdminActionId(null);
+    }
   }
 
   async function handleDeny(userId: string) {
     setAdminActionId(userId);
-    await adminFetch(`/admin/premium-requests/${userId}/deny`, { method: "PUT" });
-    setAdminRequests(r => r.filter(x => x.userId !== userId));
-    setSelectedRequests(s => { const n = new Set(s); n.delete(userId); return n; });
-    setAdminActionId(null);
+    setAdminError(null);
+    try {
+      const response = await adminFetch(`/admin/premium-requests/${userId}/deny`, { method: "PUT" });
+      if (!response.ok) throw new Error("Request failed");
+      setAdminRequests(r => r.filter(x => x.userId !== userId));
+      setSelectedRequests(s => { const n = new Set(s); n.delete(userId); return n; });
+    } catch {
+      setAdminError("Could not deny this request. It is still pending; retry when connected.");
+    } finally {
+      setAdminActionId(null);
+    }
   }
 
   async function handleBulkApprove() {
     const ids = Array.from(selectedRequests);
     if (ids.length === 0) return;
     setBulkProcessing(true);
-    await Promise.all(ids.map(userId =>
-      adminFetch(`/admin/premium-requests/${userId}/approve`, { method: "PUT" }).catch(() => {})
-    ));
-    setAdminRequests(r => r.filter(x => !selectedRequests.has(x.userId)));
-    setSelectedRequests(new Set());
-    setBulkProcessing(false);
+    setAdminError(null);
+    try {
+      const results = await Promise.all(ids.map(async userId => {
+        try {
+          const response = await adminFetch(`/admin/premium-requests/${userId}/approve`, { method: "PUT" });
+          return { userId, ok: response.ok };
+        } catch {
+          return { userId, ok: false };
+        }
+      }));
+      const succeeded = new Set(results.filter(result => result.ok).map(result => result.userId));
+      setAdminRequests(r => r.filter(x => !succeeded.has(x.userId)));
+      setSelectedRequests(new Set(results.filter(result => !result.ok).map(result => result.userId)));
+      if (succeeded.size !== ids.length) {
+        setAdminError("Some requests could not be approved. Failed requests remain selected for retry.");
+      }
+    } finally {
+      setBulkProcessing(false);
+    }
   }
 
   async function handleBulkDeny() {
     const ids = Array.from(selectedRequests);
     if (ids.length === 0) return;
     setBulkProcessing(true);
-    await Promise.all(ids.map(userId =>
-      adminFetch(`/admin/premium-requests/${userId}/deny`, { method: "PUT" }).catch(() => {})
-    ));
-    setAdminRequests(r => r.filter(x => !selectedRequests.has(x.userId)));
-    setSelectedRequests(new Set());
-    setBulkProcessing(false);
+    setAdminError(null);
+    try {
+      const results = await Promise.all(ids.map(async userId => {
+        try {
+          const response = await adminFetch(`/admin/premium-requests/${userId}/deny`, { method: "PUT" });
+          return { userId, ok: response.ok };
+        } catch {
+          return { userId, ok: false };
+        }
+      }));
+      const succeeded = new Set(results.filter(result => result.ok).map(result => result.userId));
+      setAdminRequests(r => r.filter(x => !succeeded.has(x.userId)));
+      setSelectedRequests(new Set(results.filter(result => !result.ok).map(result => result.userId)));
+      if (succeeded.size !== ids.length) {
+        setAdminError("Some requests could not be denied. Failed requests remain selected for retry.");
+      }
+    } finally {
+      setBulkProcessing(false);
+    }
   }
 
   function toggleSelectRequest(userId: string) {
@@ -361,12 +417,19 @@ const SettingsPage = memo(function SettingsPage({
 
   async function handleTogglePremium(userId: string, current: boolean) {
     setAdminActionId(userId);
-    await adminFetch(`/admin/users/${userId}/premium`, {
-      method: "PUT",
-      body: JSON.stringify({ isPremium: !current }),
-    });
-    setAdminUsers(u => u.map(x => x.userId === userId ? { ...x, isPremium: !current } : x));
-    setAdminActionId(null);
+    setAdminError(null);
+    try {
+      const response = await adminFetch(`/admin/users/${userId}/premium`, {
+        method: "PUT",
+        body: JSON.stringify({ isPremium: !current }),
+      });
+      if (!response.ok) throw new Error("Request failed");
+      setAdminUsers(u => u.map(x => x.userId === userId ? { ...x, isPremium: !current } : x));
+    } catch {
+      setAdminError("Could not update this user’s premium access. Try again.");
+    } finally {
+      setAdminActionId(null);
+    }
   }
 
   // ── Admin Panel (full-page view when authenticated) ───────────────────────

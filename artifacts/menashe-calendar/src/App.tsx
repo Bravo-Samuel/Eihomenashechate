@@ -64,6 +64,12 @@ export default function App() {
           <Route path="/app" component={AppRoute} />
           <Route path="/calendar" component={AppRoute} />
           <Route path="/zmanim" component={AppRoute} />
+          <Route path="/siddur" component={AppRoute} />
+          <Route path="/journey" component={AppRoute} />
+          <Route path="/more" component={AppRoute} />
+          <Route path="/settings" component={AppRoute} />
+          <Route path="/premium" component={AppRoute} />
+          <Route path="/notifications" component={AppRoute} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
           <Route>

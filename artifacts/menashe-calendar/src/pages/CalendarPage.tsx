@@ -168,7 +168,10 @@ const CalendarPage = memo(function CalendarPage({ location, onNavigate, onDayCli
   const selectedDayData = selectedDay !== null ? days.find(d => d.gregorianDay === selectedDay) : null;
 
   return (
-    <div className="screen-enter" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div
+      className="screen-enter calendar-page-responsive"
+      style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", minWidth: 0 }}
+    >
 
       {/* ── App Header ── */}
       <div className="app-header">
@@ -198,8 +201,8 @@ const CalendarPage = memo(function CalendarPage({ location, onNavigate, onDayCli
       <div aria-live="polite" aria-atomic="true" className="sr-only">{monthAnnouncement}</div>
 
       {/* ── Calendar Card ── */}
-      <div style={{ padding: "8px 8px 0", flex: 1, overflowY: "auto" }}>
-        <div style={{
+      <div className="calendar-page-scroll" style={{ padding: "8px 8px 0", flex: 1, overflowY: "auto", minWidth: 0 }}>
+        <div className="calendar-page-card" style={{
           borderRadius: 16,
           overflow: "hidden",
           marginBottom: 10,
@@ -244,7 +247,7 @@ const CalendarPage = memo(function CalendarPage({ location, onNavigate, onDayCli
           </div>
 
           {/* ── Day Headers ── */}
-          <div role="row" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", background: "#162040" }}>
+          <div role="row" className="calendar-page-week-header" style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", background: "#162040" }}>
             {DAY_HEADERS.map((h, idx) => {
               const isSat = idx === 6;
               return (
@@ -285,8 +288,8 @@ const CalendarPage = memo(function CalendarPage({ location, onNavigate, onDayCli
             key={`${year}-${month}`}
             role="grid"
             aria-label={`${MONTHS[month]} ${year} calendar`}
-            className={slideDir === "left" ? "month-slide-left" : "month-slide-right"}
-            style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", background: "#f8fafc" }}
+            className={`calendar-page-month-grid ${slideDir === "left" ? "month-slide-left" : "month-slide-right"}`}
+              style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", background: "#f8fafc" }}
           >
             {/* Empty leading cells */}
             {Array.from({ length: firstDayOfWeek }).map((_, i) => {
@@ -296,6 +299,7 @@ const CalendarPage = memo(function CalendarPage({ location, onNavigate, onDayCli
                   key={`empty-${i}`}
                   role="gridcell"
                   aria-hidden="true"
+                  className="calendar-page-empty-cell"
                   style={{
                     minHeight: 66,
                     borderRight: i < 6 ? "1px solid #e2e8f0" : "none",
@@ -360,6 +364,7 @@ const CalendarPage = memo(function CalendarPage({ location, onNavigate, onDayCli
                   onClick={() => handleDayClick(day.gregorianDay)}
                   onKeyDown={(e) => handleCellKeyDown(e, day.gregorianDay)}
                   className={isSelected && !day.isToday ? "cal-cell-selected" : ""}
+                  data-calendar-day-cell=""
                   style={{
                     minHeight: 66,
                     padding: "5px 5px 4px",
@@ -376,7 +381,7 @@ const CalendarPage = memo(function CalendarPage({ location, onNavigate, onDayCli
                 >
                   {/* Candle icon for Fridays */}
                   {isFriCol && (
-                    <div style={{
+                    <div className="calendar-page-candle-info" style={{
                       position: "absolute", top: 3, right: 3,
                       display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1,
                     }}>
@@ -404,7 +409,7 @@ const CalendarPage = memo(function CalendarPage({ location, onNavigate, onDayCli
                   )}
 
                   {/* Day number */}
-                  <div style={{
+                  <div className="calendar-page-day-number" style={{
                     fontSize: 18, fontWeight: day.isToday ? 900 : 700,
                     color: dayNumColor,
                     lineHeight: 1,
@@ -414,7 +419,7 @@ const CalendarPage = memo(function CalendarPage({ location, onNavigate, onDayCli
                   </div>
 
                   {/* Hebrew date: numeral + month name */}
-                  <div style={{
+                  <div className="calendar-page-month-label" style={{
                     fontSize: 9, fontWeight: 500,
                     color: hebrewColor,
                     lineHeight: 1.2, marginTop: 2,
@@ -433,7 +438,7 @@ const CalendarPage = memo(function CalendarPage({ location, onNavigate, onDayCli
 
                   {/* Rosh Chodesh */}
                   {day.roshChodesh && (
-                    <div style={{
+                    <div className="calendar-page-rosh-chodesh-label" style={{
                       fontSize: 7.5, color: "#dc2626", fontWeight: 900,
                       letterSpacing: "0.04em", lineHeight: 1,
                       marginTop: "auto",
@@ -444,7 +449,7 @@ const CalendarPage = memo(function CalendarPage({ location, onNavigate, onDayCli
 
                   {/* Holiday / Parasha label */}
                   {eventLabel && !day.roshChodesh && !isFast && (
-                    <div style={{
+                    <div className="calendar-page-event-label" style={{
                       fontSize: 7.5,
                       color: isOnGold ? "rgba(255,255,255,0.9)" : "#dc2626",
                       fontWeight: 800, lineHeight: 1,
@@ -613,6 +618,85 @@ const CalendarPage = memo(function CalendarPage({ location, onNavigate, onDayCli
           </div>
         )}
       </div>
+      <style>{`
+        .calendar-page-responsive,
+        .calendar-page-responsive * {
+          box-sizing: border-box;
+        }
+
+        @media (max-width: 402px) {
+          .calendar-page-responsive .calendar-page-scroll,
+          .calendar-page-responsive .calendar-page-card,
+          .calendar-page-responsive .calendar-page-week-header,
+          .calendar-page-responsive .calendar-page-month-grid {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+          }
+
+          .calendar-page-responsive .calendar-page-month-grid,
+          .calendar-page-responsive .calendar-page-week-header {
+            grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+          }
+
+          .calendar-page-responsive .calendar-page-empty-cell,
+          .calendar-page-responsive [data-calendar-day-cell] {
+            min-width: 0;
+            width: 100%;
+          }
+
+          .calendar-page-responsive [data-calendar-day-cell] {
+            min-height: clamp(56px, 16vw, 64px) !important;
+            padding: 5px 3px 4px !important;
+          }
+
+          .calendar-page-responsive .calendar-page-month-label,
+          .calendar-page-responsive .calendar-page-rosh-chodesh-label,
+          .calendar-page-responsive .calendar-page-event-label {
+            max-width: 100%;
+            overflow: visible !important;
+            overflow-wrap: anywhere;
+            text-overflow: clip !important;
+            white-space: normal !important;
+            line-height: 1.1 !important;
+          }
+
+          .calendar-page-responsive .calendar-page-candle-info {
+            position: static !important;
+            align-items: center !important;
+            flex-direction: row !important;
+            gap: 2px !important;
+            margin-bottom: 1px;
+          }
+
+          .calendar-page-responsive .calendar-page-candle-info > span {
+            font-size: 8px !important;
+          }
+
+          .calendar-page-responsive .calendar-page-candle-info > span + span {
+            font-size: 6px !important;
+          }
+
+          .calendar-page-responsive .calendar-page-day-number {
+            font-size: clamp(14px, 4.5vw, 18px) !important;
+          }
+
+          .calendar-page-responsive .calendar-page-week-header [role="columnheader"] > div:first-child {
+            font-size: clamp(10px, 3.2vw, 12px) !important;
+            letter-spacing: 0.01em !important;
+          }
+
+          .calendar-page-responsive .cal-month-nav-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+          }
+
+          .calendar-page-responsive .cal-today-btn {
+            padding: 5px 9px;
+          }
+        }
+      `}</style>
     </div>
   );
 });

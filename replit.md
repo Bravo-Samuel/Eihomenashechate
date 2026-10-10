@@ -32,6 +32,22 @@ A sacred Jewish calendar app for the Bnei Menashe community — featuring Hebrew
 
 ## Run & Operate
 
+### Start after a fresh import
+
+1. Run `pnpm install --frozen-lockfile` from the repository root.
+2. Use the **Project** run button to start the existing managed workflows.
+3. Open **Menashe Calendar** in Preview (`/?preview=1`); use the mobile artifact for Expo.
+
+Latest import check (2026-10-10): all four workflows started; the web home
+rendered without browser console errors; `/api/healthz` and `/api/books`
+returned HTTP 200 through the development proxy; Android bundle export
+completed successfully. This does not verify native-device interactions or
+signed-in screens. Expo reports dependency compatibility warnings, including
+`expo-clipboard`; review those before a native release.
+
+AI chat, web push, and payments remain disabled until their optional credentials
+listed below are configured. No credentials were invented or replaced during setup.
+
 ### Replit workflows
 
 The project is registered as 4 Replit artifacts, each with its own managed workflow (run together via the **"Project"** run button):

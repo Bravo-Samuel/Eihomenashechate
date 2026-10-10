@@ -1,0 +1,401 @@
+Act as a Senior Full-Stack Software Architect, Application Security
+Engineer, QA Lead, and DevOps Engineer.
+
+PROJECT: Menashe Calendar
+ENVIRONMENT: Replit + GitHub
+OBJECTIVE: Perform a comprehensive, evidence-based audit of the
+entire full-stack application and identify what must be fixed before
+production release.
+
+IMPORTANT: PHASE 1 IS AUDIT ONLY. DO NOT MODIFY SOURCE CODE.
+
+==================================================
+1. STRICT SCOPE AND SAFETY RULES
+==================================================
+
+- Audit the complete Web frontend, API backend, authentication,
+  database integration, authorization, tests, and build configuration.
+- This is a Web full-stack audit. Do not audit, modify, build, or test
+  the separate mobile application.
+- Inspect the existing repository structure before drawing conclusions.
+- Do not assume a feature is broken simply because a test is missing.
+- Do not assume a feature works simply because a test passes.
+- Never invent test results, root causes, or security findings.
+- Do not expose passwords, tokens, API keys, cookies, or other secrets.
+- Never print secret values into logs, reports, terminal output, or code.
+- Do not request that the user paste secrets into chat.
+- Do not modify database schemas, migrations, environment variables,
+  authentication settings, Git history, or deployment configuration.
+- Do not install unnecessary packages or upgrade dependencies.
+- Do not delete files, reset branches, force-push, commit, push,
+  publish, or deploy.
+- Do not edit Scene0.tsx.
+- Do not make changes during this audit.
+- Preserve all existing work and report uncommitted changes.
+- Distinguish confirmed defects from suspicions and recommendations.
+
+If an essential check cannot be performed, explain why and report it
+as NOT VERIFIED rather than claiming it passed.
+
+==================================================
+2. REPOSITORY AND ARCHITECTURE AUDIT
+==================================================
+
+Inspect the repository and identify:
+
+- Frontend framework, entry points, routes, components, and state flow.
+- API framework, server entry points, middleware, and route structure.
+- Authentication and authorization architecture.
+- Database technology, data access layer, migrations, and ownership model.
+- External services and integrations.
+- Environment-variable names required by each service.
+- Test frameworks and existing test coverage.
+- Build, development, and production start commands.
+- Replit and GitHub configuration relevant to running the application.
+
+For this monorepo, verify the actual paths rather than assuming them:
+
+- Web: artifacts/menashe-calendar
+- API: artifacts/api-server
+- Mobile: OUT OF SCOPE
+
+Trace important user actions from the Web UI through the API and database
+or external service, then back to the UI.
+
+Identify duplicated logic, inconsistent configuration, unused code,
+circular dependencies, and unclear boundaries between modules.
+
+==================================================
+3. FRONTEND AUDIT
+==================================================
+
+Inspect:
+
+- Route definitions, navigation, redirects, and protected pages.
+- Authentication state loading and session persistence.
+- Forms, client-side validation, loading states, and error messages.
+- API request handling, response parsing, and error recovery.
+- Buttons and interactive controls.
+- Empty states, loading states, and failure states.
+- React state synchronization and stale data risks.
+- Accessibility, keyboard navigation, and semantic HTML.
+- Responsive layouts and horizontal overflow.
+- Browser console errors and failed network requests, when testable.
+- Performance bottlenecks, oversized bundles, and unnecessary rendering.
+- Internationalization and translation completeness.
+- User-visible handling of API timeouts and server errors.
+
+Do not classify every JSX button as a separate defect.
+Trace each meaningful action to determine whether it has a valid handler,
+expected behavior, and appropriate success or failure feedback.
+
+==================================================
+4. API AND BACKEND AUDIT
+==================================================
+
+Inspect:
+
+- Every API route and HTTP method.
+- Authentication middleware and authorization checks.
+- Request validation and response schemas.
+- Correct HTTP status codes and consistent error handling.
+- Ownership checks on user-specific resources.
+- Protection against insecure direct object references.
+- Pagination, filtering, sorting, and input-size limits.
+- Rate limiting and abuse prevention where appropriate.
+- CORS configuration and allowed origins.
+- Security headers and cookie settings, where applicable.
+- Logging, audit events, and sensitive-data redaction.
+- Network timeouts and handling of upstream service failures.
+- Database connection handling and transaction boundaries.
+- Unhandled promise rejections and server exceptions.
+- Health checks and readiness checks.
+
+For protected routes, verify that anonymous users cannot access private
+data and authenticated users cannot access another user's resources.
+
+Do not weaken authorization or accept unverifiable authentication tokens
+to make tests pass.
+
+==================================================
+5. AUTHENTICATION AND SESSION AUDIT
+==================================================
+
+Trace the full authentication lifecycle:
+
+- Signup
+- Sign-in
+- Sign-out
+- Email confirmation
+- Session restoration after refresh
+- Access-token validation
+- Expired and invalid tokens
+- Protected-route redirects
+- API authentication failures
+- Password recovery, if implemented
+- Profile synchronization
+- Handling of network outages and upstream provider failures
+
+For Supabase integrations, inspect how the Web client and API verify
+tokens and identify which configuration variables they actually use.
+
+Distinguish these cases:
+
+1. Invalid or expired credentials.
+2. Valid credentials with insufficient authorization.
+3. Supabase returning an upstream error.
+4. Network timeout or connection failure.
+5. Missing or incorrect configuration.
+6. Unexpected application exceptions.
+
+Verify that a temporary provider outage is not incorrectly reported
+as an invalid session if the application can distinguish the conditions.
+
+Never log tokens or expose authentication credentials.
+Never change Supabase projects or environment variables without evidence.
+
+==================================================
+6. DATABASE AND DATA INTEGRITY AUDIT
+==================================================
+
+Identify the actual database and data-storage mechanisms used.
+
+Inspect:
+
+- Schema and migration consistency.
+- Required environment-variable dependencies.
+- Foreign keys, constraints, and indexes.
+- User ownership and tenant isolation.
+- Read/write permissions and access policies.
+- Data validation and integrity.
+- Transaction handling and duplicate submissions.
+- Concurrent update risks.
+- Error handling for unavailable databases.
+- Data persistence across refreshes and devices.
+- Backup and recovery assumptions, if documented.
+- Potential data loss during updates or deletion.
+
+Inspect localStorage separately from server-backed persistence.
+Identify features whose data is stored only in the current browser or device.
+
+DATABASE_URL RULE:
+Do not recommend adding DATABASE_URL unless the actual code requires
+a direct database connection and the intended configuration is clear.
+Do not expose database connection strings or credentials.
+
+Do not run destructive queries or modify real user data.
+
+==================================================
+7. SECURITY AUDIT
+==================================================
+
+Check for evidence of:
+
+- Hardcoded credentials or accidentally committed secrets.
+- Broken access control and IDOR vulnerabilities.
+- SQL injection and unsafe query construction.
+- Cross-site scripting risks.
+- CSRF risks where applicable.
+- Unsafe redirects.
+- SSRF risks where applicable.
+- Insecure file uploads and storage access.
+- Excessive data exposure through API responses.
+- Sensitive information in errors or logs.
+- Missing request validation.
+- Insecure dependency versions.
+- Weak session handling.
+- Overly permissive CORS or access policies.
+- Missing rate limits on sensitive operations.
+- Administrative actions without server-side authorization.
+- Unprotected debug or development endpoints.
+
+Use static inspection and safe, non-destructive tests.
+Do not exploit production systems or attempt unauthorized access.
+
+For each finding, explain the evidence, potential impact, affected
+component, and minimum safe remediation.
+
+==================================================
+8. FEATURE AND USER-JOURNEY AUDIT
+==================================================
+
+Build a feature inventory from the actual routes, components, API routes,
+and project documentation.
+
+For every major feature, report:
+
+- Feature name.
+- Frontend implementation status.
+- API integration status.
+- Data persistence method.
+- Authentication requirements.
+- Authorization requirements.
+- Tests available.
+- Runtime behavior verified.
+- Missing verification.
+- Known defects.
+
+Prioritize complete user journeys rather than checking only whether pages
+render.
+
+Examples, if implemented:
+
+- Signup and sign-in.
+- Calendar navigation and date selection.
+- Zmanim and location-dependent calculations.
+- Siddur/book browsing and opening.
+- Family Timeline create, read, update, and delete.
+- Profile and settings updates.
+- Community Census and branch access.
+- Community Events create, edit, delete, and persistence.
+- Announcements and What's New.
+- Sharing and external navigation.
+
+Do not assume these features exist or are fully implemented.
+Verify their actual behavior and report untested actions honestly.
+
+==================================================
+9. TESTING AND BUILD VALIDATION
+==================================================
+
+First inspect the existing package scripts and monorepo dependency order.
+
+Run relevant existing checks where safe:
+
+- Web unit and component tests.
+- API unit and integration tests.
+- Authentication and authorization tests.
+- Ownership-isolation tests.
+- Input-validation tests.
+- TypeScript checks.
+- Linting, if configured.
+- Production builds.
+- API readiness tests.
+- Existing end-to-end tests.
+- Dependency and vulnerability checks supported by installed tools.
+
+Build shared packages before dependent workspaces if required.
+
+Do not run destructive tests against real user data.
+Do not create real users, send emails, publish content, or trigger payments
+without explicit approval.
+
+For every command, report:
+- Exact command.
+- Pass/fail result.
+- Relevant error summary.
+- Whether the failure is caused by code, environment, configuration,
+  missing secrets, external services, or an unrelated existing issue.
+
+Do not treat a missing environment variable as proof of a code defect.
+Do not silently skip failed tests.
+Do not claim live authentication or production behavior was verified
+unless it was actually tested.
+
+==================================================
+10. PERFORMANCE AND PRODUCTION READINESS
+==================================================
+
+Inspect:
+
+- Production build size and oversized chunks.
+- API latency risks and unnecessary repeated requests.
+- Database query efficiency.
+- Caching and pagination.
+- Memory leaks and long-running resources.
+- Environment-specific configuration.
+- Startup and shutdown behavior.
+- Logging and error monitoring.
+- Health and readiness checks.
+- External service dependencies.
+- Deployment assumptions and operational documentation.
+- Missing backups, recovery procedures, or monitoring.
+
+Separate actual release blockers from optional optimizations.
+
+Do not change deployment settings or deploy the application.
+
+==================================================
+11. FINDINGS AND PRIORITIZATION
+==================================================
+
+Classify every finding:
+
+P0 — Critical:
+Immediate severe security, data-loss, or system-integrity risk.
+
+P1 — High:
+Major security vulnerability or core user journey failure.
+
+P2 — Medium:
+Important functional, reliability, or maintainability issue.
+
+P3 — Low:
+Minor defect, usability improvement, or technical debt.
+
+INFO — Informational:
+Observation or recommendation without a confirmed defect.
+
+For every finding provide:
+
+- Unique finding ID.
+- Severity and confidence.
+- Short title.
+- Evidence and exact file/function/route.
+- Reproduction steps, if confirmed.
+- Expected versus actual behavior.
+- User and business impact.
+- Minimum safe fix.
+- Regression test recommendation.
+- Whether the issue is confirmed, suspected, or not verified.
+
+Avoid speculative findings and duplicate reports.
+
+==================================================
+12. REQUIRED FINAL REPORT
+==================================================
+
+Return a structured report with these sections:
+
+A. Executive Summary
+- Overall readiness: READY / READY WITH CONDITIONS / NOT READY /
+  INSUFFICIENT EVIDENCE.
+- Most important findings.
+- Main release risks.
+
+B. Architecture Map
+- Web, API, authentication, database, and external services.
+
+C. Feature Audit Matrix
+- Implemented, partially implemented, broken, or not verified.
+
+D. Findings Ranked by Severity
+- P0 through P3 and informational observations.
+
+E. Authentication and Security Review
+- Confirmed vulnerabilities, suspected weaknesses, and verified controls.
+
+F. Database and Persistence Review
+- Storage architecture, ownership, integrity, and configuration needs.
+
+G. Test and Build Results
+- Commands, results, and explanations of failures.
+
+H. Production Readiness Checklist
+- Completed, blocked, not applicable, or not verified.
+
+I. Top 10 Recommended Actions
+- Ordered by risk reduction and dependency.
+- Identify the smallest safe next step for each.
+
+J. Verification Gaps
+- What could not be tested and what evidence is required.
+
+K. Scope Confirmation
+- Confirm that no source files, schemas, secrets, deployment settings,
+  Git history, or mobile files were modified.
+
+FINAL RULE:
+This is an audit, not an implementation task.
+Do not modify files. Stop after presenting the report and wait for
+explicit approval before fixing anything.

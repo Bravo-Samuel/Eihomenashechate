@@ -1,0 +1,287 @@
+MENASHE CALENDAR — ROLE-BASED ACCESS CONTROL (RBAC) & SUPABASE AUDIT
+
+Role and Responsibilities
+
+Act as a Senior Full-Stack Security Architect, Supabase/PostgreSQL Security Engineer, RBAC Specialist, and QA Auditor.
+
+Your task is to conduct a comprehensive, evidence-based audit of the roles, permissions, authorization rules, and access-control enforcement in Menashe Calendar.
+
+Primary objective: Determine exactly which roles exist in the application, what each role is allowed to do, where role assignments are stored, and whether the same permissions are enforced consistently in Supabase, PostgreSQL RLS policies, the API backend, and the Web frontend.
+
+This is an AUDIT ONLY. Do not implement fixes until I explicitly approve them.
+
+1. Scope and Safety
+
+Inspect the actual repository and configuration rather than assuming a standard Supabase architecture.
+
+Expected monorepo locations:
+
+- Web: "artifacts/menashe-calendar"
+- API: "artifacts/api-server"
+- Shared packages: inspect actual imports and dependencies.
+- Supabase configuration, SQL migrations, database schemas, policies, and functions: locate them in the repository.
+
+The separate mobile application is OUT OF SCOPE. Do not modify or test it.
+
+Do not modify "Scene0.tsx".
+
+Do not:
+
+- Change source code, database schemas, migrations, RLS policies, roles, or permissions.
+- Change environment variables, secrets, Supabase projects, or deployment configuration.
+- Run database migrations, development bootstrap scripts, or destructive SQL.
+- Query, print, export, or expose real user data.
+- Grant or revoke roles.
+- Create real users or change real accounts.
+- Disable RLS or bypass authorization to make a test pass.
+- Commit, push, deploy, reset Git history, or delete files.
+- Print access tokens, service-role keys, passwords, or other secrets.
+
+Preserve all existing work. Inspect Git status before any validation.
+
+2. Discover Every Role
+
+Search the entire in-scope Web/API/shared source and database configuration for:
+
+- Role enums, constants, types, and interfaces.
+- User roles and account types.
+- Admin, super-admin, moderator, member, approved member, owner, and guest concepts.
+- Premium/subscriber status and whether it is a role or an entitlement.
+- Organization, family, community, branch, or resource-specific roles.
+- Supabase "app_metadata", "user_metadata", JWT claims, custom claims, and role-related database columns.
+- Role assignment, approval, promotion, suspension, and revocation code.
+- Hardcoded role checks and permission lists.
+- Default roles assigned during signup or account creation.
+- Database functions, triggers, RPCs, and administrative workflows affecting roles.
+
+Do not assume that all these role names exist. Report only roles or authorization concepts supported by evidence.
+
+For each role or concept, identify:
+
+1. Exact name and source.
+2. Meaning and intended purpose.
+3. Where the role is stored.
+4. Who can assign, approve, modify, or revoke it.
+5. Default behavior for new users.
+6. How the role is checked at runtime.
+7. Whether it is a true authorization role, an account status, a group membership, or a subscription entitlement.
+8. Any duplicate or conflicting role definitions.
+
+3. Trace the Complete Authorization Flow
+
+Trace a user's authorization from sign-in to protected data access.
+
+Inspect:
+
+- Supabase Auth identity and session.
+- JWT claims and token validation.
+- Application account/profile mapping.
+- Role and permission lookup.
+- API authentication middleware.
+- API role/permission middleware.
+- Database queries and repository methods.
+- Supabase client usage and PostgreSQL access.
+- RLS policies and SQL grants.
+- Web route guards and conditional UI rendering.
+- Administrative and privileged operations.
+
+Produce a trace for each important role showing:
+
+User identity → role source → role verification → API authorization → database/RLS enforcement → result.
+
+Determine whether any permission is enforced only by hiding a button or page in the frontend.
+
+4. Supabase and PostgreSQL Audit
+
+Determine whether the app actually uses Supabase Postgres directly, the Supabase Data API, an API backend using "DATABASE_URL", or a combination.
+
+Inspect available source files and migrations for:
+
+- Whether RLS is enabled on each relevant table.
+- SELECT, INSERT, UPDATE, and DELETE policies.
+- Policy conditions based on "auth.uid()", JWT claims, membership, or database functions.
+- Table privileges and grants.
+- SECURITY DEFINER functions and their execution privileges.
+- Search paths and privilege-escalation risks in privileged functions.
+- Whether user-editable metadata can influence authorization.
+- Whether role assignment is protected from ordinary users.
+- Whether policies cover all sensitive tables and child resources.
+- Whether views, RPCs, storage objects, and file URLs have separate access controls.
+- Whether server-side service-role credentials bypass RLS and, if so, whether the API applies equivalent authorization checks.
+
+Never expose secret values. Do not use a service-role key to bypass protections during testing.
+
+If the repository lacks the live Supabase schema or policy definitions, explicitly mark live RLS status as NOT VERIFIED. Do not infer that a policy exists merely because a TypeScript type or schema file exists.
+
+5. Role Escalation and Authorization Vulnerabilities
+
+Look specifically for:
+
+- Users modifying their own role, approval status, or privilege fields.
+- Client-supplied role names or permissions trusted by the server.
+- Authorization based on editable "user_metadata".
+- Admin checks performed only in the frontend.
+- Missing role checks on administrative API routes.
+- Inconsistent authorization between similar endpoints.
+- Cross-user access to profiles, directory records, memorials, family timelines, payments, community branches, events, and files.
+- Owners approving or activating their own resources.
+- Premium entitlements granted without verified payment authorization.
+- Role checks that fail open when a database or authentication provider is unavailable.
+- Stale JWT claims after role changes or account suspension.
+- Missing revocation or downgrade behavior.
+- IDOR vulnerabilities involving resource IDs.
+- Privileged database functions accessible to unauthorized users.
+- Overly broad RLS policies or missing policies on sensitive tables.
+
+For each suspected issue, distinguish a confirmed defect from an unverified risk.
+
+6. Build a Role-Permission Matrix
+
+Create a matrix from the actual implementation.
+
+Use rows for discovered roles and columns for important capabilities, such as:
+
+- View public content.
+- View private member profiles.
+- Edit own profile.
+- View other members' contact details.
+- Create and manage own content.
+- Access family-only resources.
+- Submit and manage community branches.
+- Approve or reject submissions.
+- Manage announcements and events.
+- Moderate memorials or tributes.
+- Manage users and roles.
+- Access administrative dashboards.
+- Access premium features.
+- Read or modify payment records.
+- Access protected uploads.
+- Use administrative API routes.
+
+For every cell, use:
+
+- ALLOWED — enforced and supported by evidence.
+- DENIED — explicitly rejected by verified enforcement.
+- CONDITIONAL — depends on ownership, approval, consent, or another rule.
+- INCONSISTENT — Web/API/database behavior disagrees.
+- NOT VERIFIED — insufficient evidence.
+
+Do not mark a permission ALLOWED simply because the UI displays it or because a route exists.
+
+For each matrix row, cite the relevant source files, functions, API routes, SQL policies, and tests.
+
+7. Supabase Runtime Verification Plan
+
+First determine which checks can be performed safely without accessing real user data.
+
+If a configured test environment and authorized test accounts already exist, propose or run only non-destructive checks supported by the environment.
+
+Do not create accounts, change role assignments, or alter real data without explicit approval.
+
+Where live access is unavailable, provide a clear manual verification plan for the project owner.
+
+The verification plan must distinguish:
+
+- Repository/source evidence.
+- Automated unit or integration test evidence.
+- Live Supabase configuration evidence.
+- Actual runtime authorization evidence.
+
+Test scenarios should include, where safely possible:
+
+1. Anonymous user accessing protected resources.
+2. Normal authenticated member accessing permitted resources.
+3. Unapproved member accessing approved-member resources.
+4. Approved member attempting administrative operations.
+5. Administrator accessing authorized administrative operations.
+6. Ordinary user attempting to change their own role.
+7. Ordinary user attempting to modify another user's data.
+8. Suspended or revoked user attempting access.
+9. Expired or stale token after a role change.
+10. Unauthorized access through direct API requests rather than the UI.
+11. Direct database/API access subject to RLS.
+12. Premium access after entitlement expiration or failed payment.
+
+Use isolated test data only when the owner has explicitly authorized it. Never perform privilege-escalation experiments against real accounts or production data.
+
+8. Automated Tests and Validation
+
+Inspect existing tests for:
+
+- Role assignment.
+- Role lookup.
+- API authorization.
+- RLS policy coverage.
+- Ownership isolation.
+- Administrative endpoints.
+- Unauthorized and forbidden responses.
+- Role revocation.
+- Premium entitlement checks.
+- Cross-user data isolation.
+
+Report missing tests and recommend regression cases.
+
+Do not run database-mutating tests against an unknown or production database. Inspect scripts before executing them.
+
+Do not claim live Supabase verification unless the actual runtime check was performed.
+
+9. Required Final Report
+
+Return the following sections:
+
+A. Executive Summary
+
+- Overall status: VERIFIED / PARTIALLY VERIFIED / NOT VERIFIED / DEFECTIVE.
+- Whether roles are implemented consistently.
+- Highest-risk authorization gaps.
+
+B. Complete Role Inventory
+
+- Every discovered role and related authorization concept.
+- Source of truth and assignment mechanism.
+
+C. Role-Permission Matrix
+
+- Actual permissions and enforcement evidence.
+
+D. Authorization Architecture
+
+- Web → API → database/RLS flow.
+
+E. Supabase Audit
+
+- Tables and policies inspected.
+- RLS status supported by evidence.
+- Functions, grants, storage policies, and service-role usage.
+- Configuration that could not be inspected.
+
+F. Findings
+
+- Unique ID, severity, confidence, evidence, impact, and minimum safe remediation.
+- Separate confirmed defects from suspected and unverified risks.
+
+G. Role Escalation and Privacy Review
+
+- Whether ordinary users can alter roles or access unauthorized resources.
+
+H. Test Results
+
+- Exact commands and actual results.
+- Tests not run and why.
+
+I. Manual Supabase Verification Guide
+
+- Dashboard areas, SQL metadata checks, and safe test-account scenarios needed to close verification gaps.
+- Never request or display secret values.
+
+J. Prioritized Remediation Plan
+
+- Critical security defects first.
+- Minimal safe fixes and regression tests.
+
+K. Final Scope Confirmation
+
+- Confirm that no files, database records, roles, policies, secrets, Git history, mobile code, or deployment settings were modified.
+
+FINAL RULE:
+This is an audit only. Stop after the report and wait for explicit approval before making any changes.

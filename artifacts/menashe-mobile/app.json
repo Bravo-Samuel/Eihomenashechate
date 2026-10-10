@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Bnei Menashe Calendar",
-    "slug": "menashe-mobile",
+    "name": "H",
+    "slug": "h",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "menashe-mobile",
+    "scheme": "h",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "updates": {
@@ -23,15 +23,17 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.menashecalendar.app",
+      "bundleIdentifier": "com.h.app",
       "buildNumber": "1",
       "infoPlist": {
-        "UIBackgroundModes": ["fetch"],
+        "UIBackgroundModes": [
+          "fetch"
+        ],
         "NSFaceIDUsageDescription": "Sign in quickly and securely with Face ID"
       }
     },
     "android": {
-      "package": "com.menashecalendar.app",
+      "package": "com.h.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
